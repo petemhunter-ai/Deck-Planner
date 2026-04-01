@@ -1,0 +1,10 @@
+{
+  "name": "deck-patio-planner",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Deck & Patio Planner — Desktop App",
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "express": "^5.0.1"
+  }
+}
