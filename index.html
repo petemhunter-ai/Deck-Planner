@@ -73,9 +73,12 @@ canvas{display:block;cursor:crosshair}
 .prop-row input,.prop-row select{width:100%;height:28px;font-size:12px}
 .prop-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .swatches{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
-.swatch{width:22px;height:22px;border-radius:4px;border:2px solid transparent;cursor:pointer;transition:transform .1s,border-color .1s}
-.swatch:hover{transform:scale(1.15)}
+.swatch{width:22px;height:22px;border-radius:4px;border:2px solid transparent;cursor:pointer;transition:transform .1s,border-color .1s;position:relative}
+.swatch:hover{transform:scale(1.2);z-index:10}
 .swatch.sel{border-color:var(--primary);transform:scale(1.1)}
+/* Color tooltip */
+.swatch::after{content:attr(data-name);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#000;color:#fff;font-size:10px;white-space:nowrap;padding:3px 6px;border-radius:4px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:100}
+.swatch:hover::after{opacity:1}
 .prop-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .dim-badge{display:inline-block;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:2px 8px;font-size:11px;color:var(--primary);font-weight:600;margin-bottom:8px}
 
@@ -167,6 +170,10 @@ canvas{display:block;cursor:crosshair}
   #toolbar .btn{font-size:11px;padding:3px 6px}
   /* Make toolbar items slightly bigger for touch */
   .btn{min-height:32px}
+  /* Ensure chat input is always visible and tappable */
+  #chat-input-row{padding:10px;gap:8px}
+  #chat-input{height:40px;font-size:16px !important;border-radius:8px} /* font-size:16px prevents iOS zoom */
+  #chat-send{height:40px;padding:0 16px;font-size:14px;border-radius:8px}
 }
 
 /* Safe area insets for notched iPads */
@@ -479,33 +486,75 @@ const CC_CATALOG = [
     {name:"Aquatic Love Seat (#1002)",width:54,depth:33.5,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
     {name:"Aquatic Club Chair (#1003)",width:30,depth:33.5,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
     {name:"Aquatic End Table (#1004)",width:22,depth:24,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
-    {name:"Cocktail Table (#1013)",width:22,depth:42,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
+    {name:"Aquatic Cocktail Table (#1013)",width:22,depth:42,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
+    {name:"Aquatic Pub Chair Counter (#1006C)",width:27,depth:27,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
+    {name:"Aquatic Pub Chair Pub (#1007P)",width:27,depth:27,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
+    {name:"Aquatic 40 Table 40x60 (#1008)",width:40,depth:60,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
     {name:"Aquatic 40 Table 40x72 (#1009)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
     {name:"Aquatic 40 Table 40x84 (#1010)",width:40,depth:84,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
     {name:"Aquatic 40 Table 40x96 (#1011)",width:40,depth:96,url:"https://www.casualcomfortusa.com/collections/aquatic/"}
   ]},
-  {name:"Bars & Fire Pits",products:[
-    {name:"Round Fire Pit 46\" (#46FP)",width:46,depth:46,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"4' Rectangular Fire Pit (#6531)",width:34,depth:48,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
+  {name:"Sectional Components",products:[
+    {name:"Armless Chair Section",width:30,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
+    {name:"Left Arm Section",width:34,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
+    {name:"Right Arm Section",width:34,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
+    {name:"Corner Section",width:33,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
+    {name:"Ottoman / Chaise Extension",width:30,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
+    {name:"Wedge Section",width:33,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
+    {name:"3-Piece Sectional (LAF/Corner/RAF)",width:101,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
+    {name:"4-Piece Sectional w/Ottoman",width:101,depth:66,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
+    {name:"5-Piece Sectional L-Shape",width:130,depth:66,url:"https://www.casualcomfortusa.com/collections/sectionals/"}
+  ]},
+  {name:"Bars, Buffets & Fire Pits",products:[
+    {name:"Round Fire Pit 46\" (#46FP-CONV)",width:46,depth:46,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
+    {name:"4' Rectangular Fire Pit (#6531CONV)",width:34,depth:48,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
     {name:"6' Rectangular Fire Table (#6533)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"Simplicity Fire Pit 4' Conv. (#920-4CONV)",width:36,depth:48,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"Barstool Dining (#6645-D)",width:16,depth:16,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"Saddle Stool w/Back Dining (#6646B-D)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
+    {name:"Simplicity Fire Pit 4' Conv (#920-4CONV)",width:36,depth:48,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
+    {name:"Simplicity Fire Pit 5' Conv (#920-5CONV)",width:36,depth:60,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
+    {name:"4' Conversation Surfboard Table",width:20,depth:48,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
     {name:"5' Surfboard Table (#3001-5D)",width:20,depth:60,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
     {name:"6' Surfboard Table (#3001-6D)",width:20,depth:72,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"7' Surfboard Table (#3001-7D)",width:20,depth:84,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"}
+    {name:"7' Surfboard Table (#3001-7D)",width:20,depth:84,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
+    {name:"Barstool Dining (#6645-D)",width:16,depth:16,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
+    {name:"Barstool Counter (#6645-C)",width:16,depth:16,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
+    {name:"Barstool Pub (#6645-P)",width:16,depth:16,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
+    {name:"Saddle Stool w/Back Dining (#6646B-D)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
+    {name:"Saddle Stool w/Back Counter (#6646B-C)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
+    {name:"Saddle Stool w/Back Pub (#6646B-P)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
+    {name:"Saddle Stool Dining (#6646-D)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"}
   ]},
   {name:"Chaises & Lounges",products:[
     {name:"Double Chaise Lounge",width:86,depth:60,url:"https://www.casualcomfortusa.com/collections/chaises/"},
-    {name:"Chaise Lounge",width:26,depth:80,url:"https://www.casualcomfortusa.com/collections/chaises/"},
-    {name:"Adirondack Chair",width:30,depth:34,url:"https://www.casualcomfortusa.com/collections/adirondack-chairs/"}
+    {name:"Single Chaise Lounge",width:26,depth:80,url:"https://www.casualcomfortusa.com/collections/chaises/"},
+    {name:"Adirondack Chair",width:30,depth:34,url:"https://www.casualcomfortusa.com/collections/adirondack-chairs/"},
+    {name:"Adirondack Ottoman",width:21,depth:18,url:"https://www.casualcomfortusa.com/collections/adirondack-chairs/"},
+    {name:"Adirondack Side Table",width:18,depth:18,url:"https://www.casualcomfortusa.com/collections/adirondack-chairs/"}
   ]},
-  {name:"Dining Sets",products:[
+  {name:"Dining",products:[
+    {name:"30\" Round Dining Table",width:30,depth:30,url:"https://www.casualcomfortusa.com/collections/dining/"},
     {name:"48\" Round Dining Table",width:48,depth:48,url:"https://www.casualcomfortusa.com/collections/dining/"},
     {name:"60\" Round Dining Table",width:60,depth:60,url:"https://www.casualcomfortusa.com/collections/dining/"},
-    {name:"72\"x42\" Dining Table",width:72,depth:42,url:"https://www.casualcomfortusa.com/collections/dining/"},
-    {name:"84\"x42\" Dining Table",width:84,depth:42,url:"https://www.casualcomfortusa.com/collections/dining/"},
-    {name:"Dining Chair",width:22,depth:24,url:"https://www.casualcomfortusa.com/collections/dining/"}
+    {name:"60\"x36\" Rect Dining Table",width:60,depth:36,url:"https://www.casualcomfortusa.com/collections/dining/"},
+    {name:"72\"x36\" Rect Dining Table",width:72,depth:36,url:"https://www.casualcomfortusa.com/collections/dining/"},
+    {name:"72\"x42\" Rect Dining Table",width:72,depth:42,url:"https://www.casualcomfortusa.com/collections/dining/"},
+    {name:"84\"x42\" Rect Dining Table",width:84,depth:42,url:"https://www.casualcomfortusa.com/collections/dining/"},
+    {name:"96\"x42\" Rect Dining Table",width:96,depth:42,url:"https://www.casualcomfortusa.com/collections/dining/"},
+    {name:"Dining Chair",width:22,depth:24,url:"https://www.casualcomfortusa.com/collections/dining/"},
+    {name:"Dining Arm Chair",width:24,depth:24,url:"https://www.casualcomfortusa.com/collections/dining/"}
+  ]},
+  {name:"Deep Seating",products:[
+    {name:"Deep Seating Sofa",width:82,depth:38,url:"https://www.casualcomfortusa.com/collections/deep-seating/"},
+    {name:"Deep Seating Love Seat",width:58,depth:38,url:"https://www.casualcomfortusa.com/collections/deep-seating/"},
+    {name:"Deep Seating Club Chair",width:34,depth:38,url:"https://www.casualcomfortusa.com/collections/deep-seating/"},
+    {name:"Deep Seating Ottoman",width:34,depth:26,url:"https://www.casualcomfortusa.com/collections/deep-seating/"},
+    {name:"Deep Seating Cocktail Table",width:48,depth:26,url:"https://www.casualcomfortusa.com/collections/deep-seating/"},
+    {name:"Deep Seating End Table",width:22,depth:22,url:"https://www.casualcomfortusa.com/collections/deep-seating/"}
+  ]},
+  {name:"Swivel & Glider",products:[
+    {name:"Swivel Glider Chair",width:32,depth:34,url:"https://www.casualcomfortusa.com/collections/swivel/"},
+    {name:"Swivel Rocker Chair",width:32,depth:34,url:"https://www.casualcomfortusa.com/collections/swivel/"},
+    {name:"Chat Chair",width:28,depth:30,url:"https://www.casualcomfortusa.com/collections/swivel/"},
+    {name:"Chat Table Round 36\"",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/swivel/"}
   ]}
 ];
 
@@ -520,23 +569,56 @@ const NC_CATALOG = [
     {name:"6510 End Table",width:22,depth:22,url:"https://www.northcape.com/product/6510-end-table/"},
     {name:"6510 Rotating Chat Table",width:36,depth:36,url:"https://www.northcape.com/product/6510-rotating-chat-table/"}
   ]},
-  {name:"Aluminum / Sling",products:[
-    {name:"Rio Chaise Lounge",width:84,depth:29,url:"https://www.northcape.com/product/rio-chaise-lounge/"},
-    {name:"Rio 48 Dining Table",width:48,depth:48,url:"https://www.northcape.com/product/rio-48-dining-table/"},
-    {name:"Rio 60 Dining Table",width:60,depth:60,url:"https://www.northcape.com/product/rio-60-dining-table/"},
-    {name:"Rio Dining Chair",width:24,depth:27,url:"https://www.northcape.com/product/rio-dining-chair/"},
-    {name:"Capri Chaise Lounge",width:26,depth:74,url:"https://www.northcape.com/product/capri-chaise-lounge/"},
-    {name:"Capri 48\" Round Dining Table",width:48,depth:48,url:"https://www.northcape.com/product/capri-48-round-dining-table/"},
-    {name:"Overton 82\"x42\" Dining Table",width:82,depth:42,url:"https://www.northcape.com/product/overton-82x-42-dining-table-w-textured-alum-wood-look-finish/"},
-    {name:"Overton Padded Dining Chair",width:25,depth:24,url:"https://www.northcape.com/product/overton-padded-dining-chair/"},
-    {name:"Overton Rectangle Coffee Table",width:44,depth:24,url:"https://www.northcape.com/product/overton-rectangle-coffee-table-w-textured-alum-wood-look-finish/"}
+  {name:"6510 Sectional Components",products:[
+    {name:"6510 Corner Section",width:31,depth:31,url:"https://www.northcape.com/product-category/6510/"},
+    {name:"6510 Armless Section",width:27,depth:29,url:"https://www.northcape.com/product-category/6510/"},
+    {name:"6510 Left Arm Section",width:31,depth:29,url:"https://www.northcape.com/product-category/6510/"},
+    {name:"6510 Right Arm Section",width:31,depth:29,url:"https://www.northcape.com/product-category/6510/"},
+    {name:"6510 Chaise Section",width:31,depth:58,url:"https://www.northcape.com/product-category/6510/"},
+    {name:"6510 3-Pc Sectional (L/Corner/R)",width:89,depth:29,url:"https://www.northcape.com/product-category/6510/"},
+    {name:"6510 4-Pc Sectional w/Chaise",width:89,depth:58,url:"https://www.northcape.com/product-category/6510/"}
   ]},
   {name:"Bainbridge Woven",products:[
-    {name:"Bainbridge 3 Seat Sofa",width:81,depth:32.5,url:"https://www.northcape.com/"},
-    {name:"Bainbridge 2 Seat Sofa",width:55,depth:32.5,url:"https://www.northcape.com/"},
-    {name:"Bainbridge Lounge Chair",width:33,depth:32.5,url:"https://www.northcape.com/"},
-    {name:"Bainbridge Ottoman",width:30,depth:30,url:"https://www.northcape.com/"},
-    {name:"Bainbridge Coffee Table",width:47,depth:24,url:"https://www.northcape.com/"}
+    {name:"Bainbridge 3 Seat Sofa",width:81,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge 2 Seat Sofa",width:55,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Lounge Chair",width:33,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Ottoman",width:30,depth:30,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Coffee Table",width:47,depth:24,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge End Table",width:22,depth:22,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Corner Section",width:33,depth:33,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Armless Section",width:27,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Chaise Section",width:33,depth:60,url:"https://www.northcape.com/product-category/bainbridge/"}
+  ]},
+  {name:"Aluminum / Sling",products:[
+    {name:"Rio Chaise Lounge",width:84,depth:29,url:"https://www.northcape.com/product/rio-chaise-lounge/"},
+    {name:"Rio 48\" Round Dining Table",width:48,depth:48,url:"https://www.northcape.com/product/rio-48-dining-table/"},
+    {name:"Rio 60\" Round Dining Table",width:60,depth:60,url:"https://www.northcape.com/product/rio-60-dining-table/"},
+    {name:"Rio Dining Chair",width:24,depth:27,url:"https://www.northcape.com/product/rio-dining-chair/"},
+    {name:"Rio Arm Chair",width:26,depth:27,url:"https://www.northcape.com/product/rio-dining-chair/"},
+    {name:"Capri Chaise Lounge",width:26,depth:74,url:"https://www.northcape.com/product/capri-chaise-lounge/"},
+    {name:"Capri 30\" Round Dining Table",width:30,depth:30,url:"https://www.northcape.com/product/capri-30-round-dining-table/"},
+    {name:"Capri 48\" Round Dining Table",width:48,depth:48,url:"https://www.northcape.com/product/capri-48-round-dining-table/"},
+    {name:"Capri 72\" Oval Dining Table",width:72,depth:42,url:"https://www.northcape.com/product/capri-72-oval-dining-table/"},
+    {name:"Capri Lounge Chair",width:24,depth:29,url:"https://www.northcape.com/product/capri-lounge-chair/"},
+    {name:"Capri Side Table",width:18,depth:18,url:"https://www.northcape.com/product/capri-side-table/"},
+    {name:"Overton 82\"x42\" Dining Table",width:82,depth:42,url:"https://www.northcape.com/product/overton-82x-42-dining-table-w-textured-alum-wood-look-finish/"},
+    {name:"Overton 55\"x40\" Dining Table",width:55,depth:40,url:"https://www.northcape.com/product/overton-55-x-40-dining-table/"},
+    {name:"Overton Padded Dining Chair",width:25,depth:24,url:"https://www.northcape.com/product/overton-padded-dining-chair/"},
+    {name:"Overton Padded Arm Chair",width:26,depth:24,url:"https://www.northcape.com/product/overton-padded-dining-chair/"},
+    {name:"Overton Rect Coffee Table",width:44,depth:24,url:"https://www.northcape.com/product/overton-rectangle-coffee-table-w-textured-alum-wood-look-finish/"},
+    {name:"Overton Conversation Table",width:40,depth:40,url:"https://www.northcape.com/product/overton-conversation-table-w-textured-alum-wood-look-finish-strong/"},
+    {name:"Overton Square End Table",width:20,depth:20,url:"https://www.northcape.com/product/overton-square-end-table-wood-finish-texture/"}
+  ]},
+  {name:"Cabo & Seaside",products:[
+    {name:"Cabo Sofa",width:77,depth:33,url:"https://www.northcape.com/product-category/cabo/"},
+    {name:"Cabo Loveseat",width:54,depth:33,url:"https://www.northcape.com/product-category/cabo/"},
+    {name:"Cabo Club Chair",width:33,depth:33,url:"https://www.northcape.com/product-category/cabo/"},
+    {name:"Cabo Ottoman",width:28,depth:28,url:"https://www.northcape.com/product-category/cabo/"},
+    {name:"Cabo Corner Section",width:33,depth:33,url:"https://www.northcape.com/product-category/cabo/"},
+    {name:"Cabo Armless Section",width:28,depth:33,url:"https://www.northcape.com/product-category/cabo/"},
+    {name:"Cabo Coffee Table",width:44,depth:24,url:"https://www.northcape.com/product-category/cabo/"},
+    {name:"Seaside Chaise Lounge",width:27,depth:78,url:"https://www.northcape.com/product-category/seaside/"},
+    {name:"Seaside Double Chaise",width:54,depth:78,url:"https://www.northcape.com/product-category/seaside/"}
   ]}
 ];
 
@@ -805,31 +887,7 @@ function drawDeck(ctx, el, ppi, sel) {
 
   // Border boards (2 boards thick) if borderColor set
   if (el.borderColor) {
-    const bw = 3.5 * ppi * 2;
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.closePath();
-    // inner clip (shrink)
-    ctx.clip();
-    const inner = pts.map(p => {
-      // approximate inset
-      const cx = pts.reduce((s,pp)=>s+pp.x,0)/pts.length;
-      const cy = pts.reduce((s,pp)=>s+pp.y,0)/pts.length;
-      const dx = p.x-cx, dy = p.y-cy;
-      const len = Math.hypot(dx,dy)||1;
-      return { x: p.x - dx/len*bw, y: p.y - dy/len*bw };
-    });
-    ctx.beginPath();
-    ctx.moveTo(inner[0].x, inner[0].y);
-    inner.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.closePath();
-    // fill border ring
-    ctx.globalCompositeOperation = 'source-atop';
-    ctx.fillStyle = el.borderColor;
-    ctx.fill();
-    ctx.restore();
+    drawBorderBoards(ctx, pts, el.borderColor, ppi);
   }
 
   // Outline
@@ -841,16 +899,40 @@ function drawDeck(ctx, el, ppi, sel) {
   ctx.lineWidth = sel ? 2.5 : 1.2;
   ctx.stroke();
 
-  // Dimension labels on sides
+  // Edge dimension labels ONLY (no center label)
   drawDeckDimLabels(ctx, pts, ppi);
-
-  // Label
-  const cx = pts.reduce((s,p)=>s+p.x,0)/pts.length;
-  const cy = pts.reduce((s,p)=>s+p.y,0)/pts.length;
-  if (el.label) drawCenterLabel(ctx, el.label, cx, cy);
 
   // Vertex handles when selected
   if (sel) drawVertexHandles(ctx, el.points, ppi);
+}
+
+function drawBorderBoards(ctx, pts, borderColor, ppi) {
+  const bw = 3.5 * ppi * 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.clip();
+  // Inset polygon
+  const cx = pts.reduce((s,p)=>s+p.x,0)/pts.length;
+  const cy2 = pts.reduce((s,p)=>s+p.y,0)/pts.length;
+  const inner = pts.map(p => {
+    const dx = p.x-cx, dy = p.y-cy2;
+    const len = Math.hypot(dx,dy)||1;
+    return { x: p.x - dx/len*bw, y: p.y - dy/len*bw };
+  });
+  // Fill the border ring using even-odd rule
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.moveTo(inner[0].x, inner[0].y);
+  inner.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.fillStyle = borderColor;
+  ctx.fill('evenodd');
+  ctx.restore();
 }
 
 function drawDeckDimLabels(ctx, pts, ppi) {
@@ -919,25 +1001,19 @@ function drawPatio(ctx, el, ppi, sel) {
   ctx.lineWidth = sel ? 2.5 : 1;
   ctx.stroke();
 
-  // Dimension labels
+  // Edge-only dimension labels (no center label)
   const wIn = el.width, hIn = el.height;
   ctx.font = 'bold 10px Segoe UI, system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  // top
-  if (hIn > 12) {
-    const label = fmtFt(wIn) + ' × ' + fmtFt(hIn);
-    const tw = ctx.measureText(label).width;
-    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x+w/2-tw/2-4, y+h/2-7, tw+8, 14);
-    ctx.fillStyle = '#e8ecf4'; ctx.fillText(label, x+w/2, y+h/2);
-  }
-  // side labels
   const wLbl = fmtFt(wIn), hLbl = fmtFt(hIn);
+  // Top edge
   const wTw = ctx.measureText(wLbl).width;
-  ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x+w/2-wTw/2-3, y-12, wTw+6, 12);
-  ctx.fillStyle = '#e8ecf4'; ctx.fillText(wLbl, x+w/2, y-6);
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x+w/2-wTw/2-3, y-14, wTw+6, 13);
+  ctx.fillStyle = '#e8ecf4'; ctx.fillText(wLbl, x+w/2, y-8);
+  // Right edge
   ctx.save(); ctx.translate(x+w+14, y+h/2); ctx.rotate(Math.PI/2);
   const hTw = ctx.measureText(hLbl).width;
-  ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(-hTw/2-3, -6, hTw+6, 12);
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(-hTw/2-3, -6, hTw+6, 13);
   ctx.fillStyle = '#e8ecf4'; ctx.fillText(hLbl, 0, 0);
   ctx.restore();
 
@@ -1020,35 +1096,221 @@ function drawFurniture(ctx, el, ppi, sel) {
   if (el.rotation) {
     ctx.translate(x+w/2, y+h/2); ctx.rotate(el.rotation*Math.PI/180); ctx.translate(-x-w/2,-y-h/2);
   }
-  ctx.fillStyle = el.color||'#8B6F5A';
-  ctx.fillRect(x,y,w,h);
-  if (el.cushionColor) {
-    ctx.fillStyle = el.cushionColor;
-    const pad = Math.min(w,h)*0.15;
-    ctx.fillRect(x+pad,y+pad,w-pad*2,h-pad*2);
-  }
-  ctx.strokeStyle = sel?'#4FC3F7':'rgba(255,255,255,0.25)';
-  ctx.lineWidth = sel?2:1;
+  // Dispatch to sketch renderer based on furniture type
+  const name = (el.name||'').toLowerCase();
+  if (/sofa|couch|sectional/.test(name)) drawSketchSofa(ctx,el,x,y,w,h,ppi);
+  else if (/love\s*seat/.test(name)) drawSketchLoveseat(ctx,el,x,y,w,h,ppi);
+  else if (/chair|rocker|swivel/.test(name)) drawSketchChair(ctx,el,x,y,w,h,ppi);
+  else if (/chaise|lounge/.test(name)) drawSketchChaise(ctx,el,x,y,w,h,ppi);
+  else if (/ottoman/.test(name)) drawSketchOttoman(ctx,el,x,y,w,h,ppi);
+  else if (/dining table|round table|oval table|rect.*table|surfboard|cocktail/.test(name)) drawSketchTable(ctx,el,x,y,w,h,ppi);
+  else if (/coffee table|end table|side table|chat table/.test(name)) drawSketchCoffeeTable(ctx,el,x,y,w,h,ppi);
+  else if (/adirondack/.test(name)) drawSketchAdirondack(ctx,el,x,y,w,h,ppi);
+  else if (/stool|barstool/.test(name)) drawSketchStool(ctx,el,x,y,w,h,ppi);
+  else drawSketchGeneric(ctx,el,x,y,w,h,ppi);
+
+  // Selection outline
+  ctx.strokeStyle = sel?'#4FC3F7':'rgba(255,255,255,0.15)';
+  ctx.lineWidth = sel?2:0.5;
   ctx.strokeRect(x,y,w,h);
-  // Name label
-  ctx.font='bold 9px Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  const name = (el.name||'Furniture').split(' ').slice(0,2).join(' ');
-  const tw = ctx.measureText(name).width;
-  if (tw < w-4) {
-    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(x+w/2-tw/2-2,y+h/2-6,tw+4,12);
-    ctx.fillStyle='#fff'; ctx.fillText(name,x+w/2,y+h/2);
-  }
-  // Dims
-  const dw=fmtFt(el.width), dd=fmtFt(el.depth);
-  ctx.font='9px Segoe UI,sans-serif';
-  const dl=`${dw}×${dd}`;
-  const dtw=ctx.measureText(dl).width;
-  if (dtw < w-4) {
-    ctx.fillStyle='rgba(255,255,255,0.5)';
-    ctx.fillText(dl, x+w/2, y+h/2+10);
+
+  // Name label always shown, no dims (static furniture)
+  const shortName = abbreviateFurnName(el.name||'Furniture');
+  ctx.font=`bold ${Math.max(8,Math.min(11,w/6))}px Segoe UI,sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const tw=ctx.measureText(shortName).width;
+  if (tw < w-4 && h > 14) {
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(x+w/2-tw/2-2,y+h-13,tw+4,11);
+    ctx.fillStyle='#fff'; ctx.fillText(shortName,x+w/2,y+h-8);
   }
   ctx.restore();
-  if (sel) { ctx.save(); if(el.rotation){ctx.translate(x+w/2,y+h/2);ctx.rotate(el.rotation*Math.PI/180);ctx.translate(-x-w/2,-y-h/2);} drawResizeHandles(ctx,x,y,w,h); ctx.restore(); }
+  // NO resize handles — furniture dimensions are fixed
+}
+
+function abbreviateFurnName(name) {
+  // Shorten common catalog names
+  return name.replace(/\s*\(#[^)]+\)/,'').replace(/Collection/,'').replace(/Aluminum/,'Alum').trim().split(' ').slice(0,3).join(' ');
+}
+
+// ── Sketch drawing helpers ──────────────────────────────────
+function drawSketchSofa(ctx,el,x,y,w,h,ppi) {
+  const f=el.color||'#8B6F5A', c=el.cushionColor||lighten(f,30);
+  // Back
+  ctx.fillStyle=f; ctx.fillRect(x,y,w,h*0.28); 
+  // Seat cushions (3 sections)
+  ctx.fillStyle=c;
+  const seats=Math.max(2,Math.round(w/(ppi*18)));
+  const sw=w/seats, sh=h*0.55;
+  for(let i=0;i<seats;i++){
+    roundRect(ctx,x+i*sw+2,y+h*0.28+2,sw-4,sh-4,4); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1; ctx.stroke();
+  }
+  // Arms
+  ctx.fillStyle=f;
+  ctx.fillRect(x,y+h*0.28,w*0.07,sh);
+  ctx.fillRect(x+w-w*0.07,y+h*0.28,w*0.07,sh);
+  // Front apron
+  ctx.fillRect(x,y+h*0.83,w,h*0.17);
+  // Legs
+  ctx.fillStyle=darken(f,40);
+  const legSz=Math.max(3,ppi*1.5);
+  [[x+legSz,y+h-legSz],[x+w-legSz*2,y+h-legSz],[x+legSz,y+h*0.28+legSz],[x+w-legSz*2,y+h*0.28+legSz]].forEach(([lx,ly])=>ctx.fillRect(lx,ly,legSz,legSz));
+}
+
+function drawSketchLoveseat(ctx,el,x,y,w,h,ppi) {
+  const f=el.color||'#8B6F5A', c=el.cushionColor||lighten(f,30);
+  ctx.fillStyle=f; ctx.fillRect(x,y,w,h*0.28);
+  ctx.fillStyle=c;
+  const sh=h*0.55;
+  roundRect(ctx,x+w*0.07+2,y+h*0.28+2,w*0.43-4,sh-4,4); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1; ctx.stroke();
+  roundRect(ctx,x+w*0.5+2,y+h*0.28+2,w*0.43-4,sh-4,4); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=f;
+  ctx.fillRect(x,y+h*0.28,w*0.07,sh);
+  ctx.fillRect(x+w-w*0.07,y+h*0.28,w*0.07,sh);
+  ctx.fillRect(x,y+h*0.83,w,h*0.17);
+}
+
+function drawSketchChair(ctx,el,x,y,w,h,ppi) {
+  const f=el.color||'#8B6F5A', c=el.cushionColor||lighten(f,30);
+  ctx.fillStyle=f; ctx.fillRect(x,y,w,h*0.3);
+  ctx.fillStyle=c;
+  roundRect(ctx,x+w*0.1,y+h*0.32,w*0.8,h*0.5,5); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle=f;
+  ctx.fillRect(x,y+h*0.3,w*0.1,h*0.52);
+  ctx.fillRect(x+w*0.9,y+h*0.3,w*0.1,h*0.52);
+  ctx.fillRect(x,y+h*0.82,w,h*0.18);
+  // Legs
+  const ls=Math.max(3,ppi*1.5);
+  ctx.fillStyle=darken(f,40);
+  [[x+ls,y+h-ls],[x+w-ls*2,y+h-ls],[x+ls,y+h*0.3+ls],[x+w-ls*2,y+h*0.3+ls]].forEach(([lx,ly])=>ctx.fillRect(lx,ly,ls,ls));
+}
+
+function drawSketchChaise(ctx,el,x,y,w,h,ppi) {
+  const f=el.color||'#8B6F5A', c=el.cushionColor||lighten(f,30);
+  // Headrest end
+  ctx.fillStyle=f; ctx.fillRect(x,y,w*0.18,h);
+  // Main cushion
+  ctx.fillStyle=c;
+  roundRect(ctx,x+w*0.18+2,y+2,w*0.82-4,h-4,6); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=1; ctx.stroke();
+  // Pillow lines
+  ctx.strokeStyle='rgba(0,0,0,0.1)'; ctx.lineWidth=0.8;
+  ctx.beginPath(); ctx.moveTo(x+w*0.18,y+h/3); ctx.lineTo(x+w,y+h/3); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+w*0.18,y+h*2/3); ctx.lineTo(x+w,y+h*2/3); ctx.stroke();
+}
+
+function drawSketchOttoman(ctx,el,x,y,w,h,ppi) {
+  const f=el.color||'#8B6F5A', c=el.cushionColor||lighten(f,30);
+  ctx.fillStyle=f; ctx.fillRect(x,y,w,h);
+  ctx.fillStyle=c;
+  const pad=Math.min(w,h)*0.1;
+  roundRect(ctx,x+pad,y+pad,w-pad*2,h-pad*2,4); ctx.fill();
+  // X tufting
+  ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(x+pad,y+pad); ctx.lineTo(x+w-pad,y+h-pad); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+w-pad,y+pad); ctx.lineTo(x+pad,y+h-pad); ctx.stroke();
+}
+
+function drawSketchTable(ctx,el,x,y,w,h,ppi) {
+  const f=el.color||'#C8A87A';
+  const isRound = w===h || /round|oval/.test((el.name||'').toLowerCase());
+  ctx.fillStyle=f;
+  if (isRound) {
+    ctx.beginPath(); ctx.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1.5; ctx.stroke();
+    // grain lines
+    ctx.strokeStyle='rgba(0,0,0,0.08)'; ctx.lineWidth=0.7;
+    for(let r=w*0.2;r<w/2;r+=w*0.2){ctx.beginPath();ctx.ellipse(x+w/2,y+h/2,r,r*(h/w),0,0,Math.PI*2);ctx.stroke();}
+  } else {
+    roundRect(ctx,x,y,w,h,4); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1.5; ctx.stroke();
+    // Wood grain
+    ctx.strokeStyle='rgba(0,0,0,0.07)'; ctx.lineWidth=0.6;
+    for(let lx=x+w*0.15;lx<x+w;lx+=w*0.15){ctx.beginPath();ctx.moveTo(lx,y+2);ctx.lineTo(lx,y+h-2);ctx.stroke();}
+  }
+  // Legs (corner dots)
+  ctx.fillStyle=darken(f,40);
+  const ls=Math.max(2,ppi*1.2);
+  [[x+ls*1.5,y+ls*1.5],[x+w-ls*2.5,y+ls*1.5],[x+ls*1.5,y+h-ls*2.5],[x+w-ls*2.5,y+h-ls*2.5]].forEach(([lx,ly])=>{ctx.beginPath();ctx.arc(lx,ly,ls,0,Math.PI*2);ctx.fill();});
+}
+
+function drawSketchCoffeeTable(ctx,el,x,y,w,h,ppi) {
+  const f=el.color||'#A09070';
+  roundRect(ctx,x,y,w,h,3); ctx.fillStyle=f; ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=1.5; ctx.stroke();
+  // Glass top suggestion
+  ctx.fillStyle='rgba(180,220,240,0.2)';
+  roundRect(ctx,x+3,y+3,w-6,h-6,2); ctx.fill();
+  ctx.strokeStyle='rgba(180,220,240,0.4)'; ctx.lineWidth=0.5; ctx.stroke();
+  const ls=Math.max(2,ppi); ctx.fillStyle=darken(f,40);
+  [[x+ls,y+ls],[x+w-ls*2,y+ls],[x+ls,y+h-ls*2],[x+w-ls*2,y+h-ls*2]].forEach(([lx,ly])=>{ctx.beginPath();ctx.arc(lx,ly,ls,0,Math.PI*2);ctx.fill();});
+}
+
+function drawSketchAdirondack(ctx,el,x,y,w,h,ppi) {
+  const f=el.color||'#E8DFB0';
+  // Wide back slats
+  ctx.fillStyle=f;
+  const slats=5, sw2=(w-4)/slats;
+  for(let i=0;i<slats;i++){ctx.fillRect(x+2+i*sw2+1,y,sw2-2,h*0.65);}
+  // Wide seat
+  ctx.fillRect(x,y+h*0.55,w,h*0.25);
+  // Arms
+  ctx.fillRect(x,y+h*0.3,w*0.12,h*0.45);
+  ctx.fillRect(x+w-w*0.12,y+h*0.3,w*0.12,h*0.45);
+  // Legs
+  ctx.fillStyle=darken(f,30);
+  ctx.fillRect(x+w*0.1,y+h*0.8,w*0.12,h*0.2);
+  ctx.fillRect(x+w*0.78,y+h*0.8,w*0.12,h*0.2);
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1;
+  ctx.strokeRect(x,y,w,h);
+}
+
+function drawSketchStool(ctx,el,x,y,w,h,ppi) {
+  const f=el.color||'#8B6F5A', c=el.cushionColor||lighten(f,25);
+  ctx.fillStyle=c;
+  ctx.beginPath(); ctx.ellipse(x+w/2,y+h/3,w/2,h/3,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1.2; ctx.stroke();
+  // Legs (X)
+  ctx.strokeStyle=f; ctx.lineWidth=Math.max(1.5,ppi*0.8);
+  ctx.beginPath(); ctx.moveTo(x+w*0.2,y+h*0.55); ctx.lineTo(x+w*0.4,y+h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+w*0.8,y+h*0.55); ctx.lineTo(x+w*0.6,y+h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+w*0.2,y+h*0.55); ctx.lineTo(x+w*0.6,y+h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+w*0.8,y+h*0.55); ctx.lineTo(x+w*0.4,y+h); ctx.stroke();
+  // Footrest ring
+  ctx.beginPath(); ctx.ellipse(x+w/2,y+h*0.75,w*0.3,h*0.08,0,0,Math.PI*2); ctx.stroke();
+}
+
+function drawSketchGeneric(ctx,el,x,y,w,h,ppi) {
+  const f=el.color||'#8B6F5A';
+  ctx.fillStyle=f; roundRect(ctx,x,y,w,h,4); ctx.fill();
+  if (el.cushionColor) {
+    ctx.fillStyle=el.cushionColor;
+    const pad=Math.min(w,h)*0.12;
+    roundRect(ctx,x+pad,y+pad,w-pad*2,h-pad*2,3); ctx.fill();
+  }
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.stroke();
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  r=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+function lighten(hex,amt){
+  let n=parseInt(hex.slice(1),16);
+  const r=Math.min(255,(n>>16)+amt), g=Math.min(255,((n>>8)&0xff)+amt), b=Math.min(255,(n&0xff)+amt);
+  return `rgb(${r},${g},${b})`;
+}
+function darken(hex,amt){
+  let n=parseInt(hex.slice(1),16);
+  const r=Math.max(0,(n>>16)-amt), g=Math.max(0,((n>>8)&0xff)-amt), b=Math.max(0,(n&0xff)-amt);
+  return `rgb(${r},${g},${b})`;
 }
 
 function drawPergola(ctx, el, ppi, sel) {
@@ -1139,17 +1401,21 @@ function drawMergedDeck(ctx, el, ppi, sel) {
   ctx.save(); ctx.clip();
   ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=0.7;
   const step=3.5*ppi;
-  if(step>3){ const bx=pts.reduce((m,p)=>Math.min(m,p.x),Infinity),ex=pts.reduce((m,p)=>Math.max(m,p.x),-Infinity);
+  if(step>3){
+    const bx=pts.reduce((m,p)=>Math.min(m,p.x),Infinity),ex=pts.reduce((m,p)=>Math.max(m,p.x),-Infinity);
     const by=pts.reduce((m,p)=>Math.min(m,p.y),Infinity),ey=pts.reduce((m,p)=>Math.max(m,p.y),-Infinity);
-    for(let lx=bx;lx<=ex;lx+=step){ctx.beginPath();ctx.moveTo(lx,by);ctx.lineTo(lx,ey);ctx.stroke();}}
+    for(let lx=bx;lx<=ex;lx+=step){ctx.beginPath();ctx.moveTo(lx,by);ctx.lineTo(lx,ey);ctx.stroke();}
+  }
   ctx.restore();
+
+  // Border boards on merged deck too
+  if (el.borderColor) {
+    drawBorderBoards(ctx, pts, el.borderColor, ppi);
+  }
+
   ctx.strokeStyle=sel?'#4FC3F7':'rgba(255,255,255,0.35)'; ctx.lineWidth=sel?3:2; ctx.stroke();
-  // All exterior dimensions
+  // Edge dimensions only — no center label
   drawDeckDimLabels(ctx, pts, ppi);
-  // Center label
-  const cx=pts.reduce((s,p)=>s+p.x,0)/pts.length;
-  const cy=pts.reduce((s,p)=>s+p.y,0)/pts.length;
-  drawCenterLabel(ctx, el.label||'Merged Deck', cx, cy);
   if (sel) drawVertexHandles(ctx, el.outline, ppi);
 }
 
@@ -1756,19 +2022,25 @@ function renderColorsPanel() {
     html+=`<p class="color-group-label">${coll}</p><div class="swatches">`;
     cols.forEach(c=>{
       const active=el&&(el.color===c.hex||el.borderColor===c.hex);
-      html+=`<div class="swatch ${active?'sel':''}" style="background:${c.hex}" title="${c.name}\n${c.collection}" onclick="applyColorToSelected('${c.hex}','${c.name}')"></div>`;
+      html+=`<div class="swatch ${active?'sel':''}" style="background:${c.hex}" data-name="${c.name}" title="${c.name}" onclick="applyColorToSelected('${c.hex}','${c.name}')"></div>`;
     });
     html+='</div>';
   });
-  if(el&&(el.type==='deck'||el.type==='merged-deck')){
-    html+=`<p style="font-size:11px;color:var(--text2);margin-top:14px;margin-bottom:6px;font-weight:600">Border Board Color</p>`;
-    html+=`<p style="font-size:10px;color:var(--text3);margin-bottom:6px">Sets the 2-board perimeter color</p><div class="swatches">`;
+
+  // Border board color — available for deck, merged-deck, always
+  const isDeckType = el&&(el.type==='deck'||el.type==='merged-deck');
+  if (!isRailing) {
+    html+=`<div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
+      <p style="font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600">Perimeter Border Color</p>
+      <p style="font-size:10px;color:var(--text3);margin-bottom:6px">2-board border — applies to selected deck or merged deck</p>
+      <div class="swatches">`;
     TIMBERTECH_DECKING.forEach(c=>{
       const active=el&&el.borderColor===c.hex;
-      html+=`<div class="swatch ${active?'sel':''}" style="background:${c.hex}" title="${c.name}" onclick="applyBorderColorToSelected('${c.hex}')"></div>`;
+      html+=`<div class="swatch ${active?'sel':''}" style="background:${c.hex}" data-name="${c.name}" title="${c.name}" onclick="applyBorderColorToSelected('${c.hex}')"></div>`;
     });
-    html+='</div>';
-    if(el.borderColor) html+=`<button class="btn btn-danger" style="margin-top:6px;font-size:11px" onclick="applyBorderColorToSelected(null)">Remove border color</button>`;
+    html+=`</div>`;
+    if(el&&el.borderColor) html+=`<button class="btn btn-danger" style="margin-top:6px;font-size:11px" onclick="applyBorderColorToSelected(null)">✕ Remove border color</button>`;
+    html+=`</div>`;
   }
   body.innerHTML=html;
 }
