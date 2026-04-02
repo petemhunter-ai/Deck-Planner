@@ -284,7 +284,7 @@ canvas{display:block;cursor:crosshair}
     <!-- CANVAS -->
     <div id="canvas-wrap">
       <canvas id="canvas"></canvas>
-      <div id="canvas-info">Scale: <span id="scale-info">2.0</span> px/in | Grid: <span id="grid-info">12"</span> | Snap: <span id="snap-info">ON</span> | Drag=move · R=rotate · Scroll=zoom · Alt+drag=pan · Del=delete</div>
+      <div id="canvas-info">Scale: <span id="scale-info">2.0</span> px/in | Grid: <span id="grid-info">1"</span> | Snap: <span id="snap-info">ON</span> | Drag=move · R=rotate · Scroll=zoom · Alt+drag=pan · Del=delete</div>
       <div id="dim-overlay"></div>
       <div id="merge-banner">
         <span id="merge-msg"></span>
@@ -866,7 +866,7 @@ const NC_CATALOG = [
 // ============================================================
 let plan = {
   elements: [],
-  gridSpacing: 12, // inches
+  gridSpacing: 1, // inches
   pixelsPerInch: 2,
   panX: 40, panY: 40,
   zoom: 1,
@@ -1141,7 +1141,7 @@ function drawDeck(ctx, el, ppi, sel) {
   ctx.lineWidth = 0.7;
   const minX = Math.min(...pts.map(p=>p.x)), maxX = Math.max(...pts.map(p=>p.x));
   const minY = Math.min(...pts.map(p=>p.y)), maxY = Math.max(...pts.map(p=>p.y));
-  const step = 3.5 * ppi; // ~3.5" board
+  const step = 5.5 * ppi; // ~5.5" board
   if (step > 3) {
     for (let lx = minX; lx <= maxX; lx += step) {
       ctx.beginPath(); ctx.moveTo(lx, minY); ctx.lineTo(lx, maxY); ctx.stroke();
@@ -1172,8 +1172,8 @@ function drawDeck(ctx, el, ppi, sel) {
 
 function drawBorderBoards(ctx, pts, borderColor, ppi) {
   if (!pts || pts.length < 3) return;
-  // Board width = 3.5 inches × 2 boards = 7 inches
-  const bw = 3.5 * ppi * 2;
+  // Board width = 5.5 inches × 2 boards = 11 inches
+  const bw = 5.5 * ppi * 2;
 
   // Compute inset polygon by offsetting each edge inward by bw
   // For each edge, compute inward normal, offset both endpoints
@@ -1356,7 +1356,7 @@ function drawStairs(ctx, el, ppi, sel) {
   pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y)); ctx.closePath(); ctx.clip();
   const minX=Math.min(...pts.map(p=>p.x)), maxX=Math.max(...pts.map(p=>p.x));
   const minY=Math.min(...pts.map(p=>p.y)), maxY=Math.max(...pts.map(p=>p.y));
-  const bStep = 7*ppi;
+  const bStep = 11*ppi;
   ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=1;
   for(let ly=minY+bStep; ly<maxY; ly+=bStep){
     ctx.beginPath(); ctx.moveTo(minX,ly); ctx.lineTo(maxX,ly); ctx.stroke();
@@ -1410,7 +1410,7 @@ function drawMergedStairs(ctx, el, ppi, sel) {
   pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y)); ctx.closePath(); ctx.clip();
   const minX=Math.min(...pts.map(p=>p.x)), maxX=Math.max(...pts.map(p=>p.x));
   const minY=Math.min(...pts.map(p=>p.y)), maxY=Math.max(...pts.map(p=>p.y));
-  const bStep=7*ppi;
+  const bStep=11*ppi;
   ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=1;
   for(let ly=minY+bStep; ly<maxY; ly+=bStep){
     ctx.beginPath(); ctx.moveTo(minX,ly); ctx.lineTo(maxX,ly); ctx.stroke();
@@ -2011,7 +2011,7 @@ function drawMergedDeck(ctx, el, ppi, sel) {
   const ey = pts.reduce((m,p)=>Math.max(m,p.y), -Infinity);
   const bx2 = pts.reduce((m,p)=>Math.min(m,p.x), Infinity);
   const ex2 = pts.reduce((m,p)=>Math.max(m,p.x), -Infinity);
-  const boardStep = 3.5 * ppi;
+  const boardStep = 5.5 * ppi;
   if (boardStep > 2) {
     for (let ly = by; ly <= ey; ly += boardStep) {
       ctx.beginPath(); ctx.moveTo(bx2, ly); ctx.lineTo(ex2, ly); ctx.stroke();
@@ -2048,7 +2048,7 @@ function drawDeckBand(ctx, el, ppi, sel) {
   const maxX = Math.max(...pts.map(p=>p.x));
 
   // Band is 2 boards = 7 inches thick
-  const bandH = 7 * ppi;
+  const bandH = 5.5 * ppi;
   const by = el.y * ppi + plan.panY;
   const color = el.color || deck.borderColor || deck.color || '#8B7260';
 
@@ -2505,7 +2505,39 @@ function onMouseMove(e) {
       const targetCy = snapToGrid(ipos.y - dragOffY);
       const curCx = pts.reduce((s,p)=>s+p.x,0)/pts.length;
       const curCy = pts.reduce((s,p)=>s+p.y,0)/pts.length;
-      const dx = targetCx - curCx, dy = targetCy - curCy;
+      let dx = targetCx - curCx, dy = targetCy - curCy;
+
+      // Stair edge snapping — snap this stair's vertices to edges of other stairs
+      if (el.type==='stairs' || el.type==='merged-stairs') {
+        const movedPts = pts.map(p=>({x:p.x+dx, y:p.y+dy}));
+        const others = plan.elements.filter(e=>e.id!==el.id&&(e.type==='stairs'||e.type==='merged-stairs'));
+        const SNAP_DIST = 6; // inches — snap threshold
+        let bestDx=0, bestDy=0, bestDist=SNAP_DIST;
+        for (const other of others) {
+          const oPts = other.points || other.outline;
+          if (!oPts) continue;
+          for (const mp of movedPts) {
+            // snap to each vertex of the other stair
+            for (const op of oPts) {
+              const d = Math.hypot(mp.x-op.x, mp.y-op.y);
+              if (d < bestDist) { bestDist=d; bestDx=op.x-mp.x; bestDy=op.y-mp.y; }
+            }
+            // snap to each edge midpoint of the other stair
+            for (let i=0; i<oPts.length; i++) {
+              const a=oPts[i], b=oPts[(i+1)%oPts.length];
+              // closest point on segment a→b to mp
+              const edx=b.x-a.x, edy=b.y-a.y, len2=edx*edx+edy*edy;
+              if (len2 < 0.001) continue;
+              const t=Math.max(0,Math.min(1,((mp.x-a.x)*edx+(mp.y-a.y)*edy)/len2));
+              const cx2=a.x+t*edx, cy2=a.y+t*edy;
+              const d2=Math.hypot(mp.x-cx2, mp.y-cy2);
+              if (d2 < bestDist) { bestDist=d2; bestDx=cx2-mp.x; bestDy=cy2-mp.y; }
+            }
+          }
+        }
+        dx += bestDx; dy += bestDy;
+      }
+
       pts.forEach(p=>{p.x+=dx; p.y+=dy;});
       // Keep x/y/width/depth in sync for stairs
       if (el.type==='stairs') {
@@ -2521,7 +2553,7 @@ function onMouseMove(e) {
         const pts = deck.outline||deck.points;
         const minY = Math.min(...pts.map(p=>p.y));
         const maxY = Math.max(...pts.map(p=>p.y));
-        newY = Math.max(minY, Math.min(maxY - 7, newY));
+        newY = Math.max(minY, Math.min(maxY - 5.5, newY));
       }
       el.y = newY;
     } else if(el.type==='railing'){
@@ -2595,7 +2627,7 @@ function onKeyDown(e) {
     const el = plan.elements.find(e=>e.id===plan.selectedId);
     if (!el) return;
     e.preventDefault();
-    const step = plan.gridSpacing || 6;
+    const step = plan.gridSpacing || 1;
     const dx = e.key==='ArrowLeft'?-step:e.key==='ArrowRight'?step:0;
     const dy = e.key==='ArrowUp'?-step:e.key==='ArrowDown'?step:0;
     if (el.type==='deck'||el.type==='merged-deck') {
@@ -3246,7 +3278,7 @@ function renderProps() {
   } else if(el.type==='fire-pit'){
     html+=`<div class="prop-row"><label>Diameter (in)</label><input type="number" value="${Math.round(el.diameter||46)}" oninput="updateProp('diameter',+this.value)"step="1"/></div>`;
   } else if(el.type==='deck-band'){
-    html+=`<div style="font-size:11px;color:var(--text2);margin-bottom:6px">Horizontal band · 7" tall (2 boards)<br>Drag up/down to position. Color matches deck border.</div>`;
+    html+=`<div style="font-size:11px;color:var(--text2);margin-bottom:6px">Horizontal band · 5.5" (1 board)<br>Drag up/down to position. Color matches deck border.</div>`;
     html+=`<div class="prop-row"><label>Y Position (in)</label><input type="number" value="${Math.round(el.y)}" oninput="updateProp('y',+this.value)"step="1"/></div>`;
   }
 
@@ -3929,7 +3961,7 @@ function setDirty(v) {
 
 function newProject() {
   if(dirty&&!confirm('Unsaved changes. Start new project?')) return;
-  plan={elements:[],gridSpacing:12,pixelsPerInch:2,panX:40,panY:40,zoom:1,selectedId:null,northAngle:0};
+  plan={elements:[],gridSpacing:1,pixelsPerInch:2,panX:40,panY:40,zoom:1,selectedId:null,northAngle:0};
   projectId=null; projectName='Untitled Project';
   document.getElementById('project-name-label').textContent=projectName;
   setDirty(false); redraw(); renderProps();
@@ -3977,7 +4009,7 @@ function saveProject() {
 
 function createNewNamedProject() {
   const name=document.getElementById('new-project-name').value.trim()||'New Project';
-  plan={elements:[],gridSpacing:12,pixelsPerInch:2,panX:40,panY:40,zoom:1,selectedId:null,northAngle:0};
+  plan={elements:[],gridSpacing:1,pixelsPerInch:2,panX:40,panY:40,zoom:1,selectedId:null,northAngle:0};
   projectName=name; projectId=null;
   document.getElementById('project-name-label').textContent=name;
   setDirty(false); closeModal('project-modal'); redraw(); renderProps();
