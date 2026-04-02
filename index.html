@@ -1039,8 +1039,10 @@ function redraw() {
   ctx.fillRect(0, 0, W, H);
 
   // Grid
-  if (plan.gridSpacing * ppi > 4) {
-    const gs = plan.gridSpacing;
+  // Draw grid — always at 12" visual spacing for performance, snap is independent
+  const visualGrid = 12; // inches — always draw foot grid
+  const gs = visualGrid;
+  if (gs * ppi > 3) {
     const startX = Math.floor(-plan.panX / ppi / gs) * gs;
     const endX   = Math.ceil((W - plan.panX) / ppi / gs) * gs;
     const startY = Math.floor(-plan.panY / ppi / gs) * gs;
@@ -1056,7 +1058,7 @@ function redraw() {
       const cy = y * ppi + plan.panY;
       ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
     }
-    // Major grid (5x)
+    // Major grid (5ft)
     ctx.strokeStyle = 'rgba(255,255,255,0.10)';
     ctx.lineWidth = 0.75;
     const mgs = gs * 5;
