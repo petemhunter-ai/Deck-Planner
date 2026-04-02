@@ -266,7 +266,7 @@ canvas{display:block;cursor:crosshair}
     <button class="btn" onclick="quickAdd('stairs')" title="Add stairs">🪜 Stairs</button>
     <button class="btn" onclick="quickAdd('railing')" title="Add railing">📏 Railing</button>
     <button class="btn" onclick="quickAdd('post')" title="Add post">🏛 Post</button>
-    <button class="btn" onclick="quickAdd('pergola')" title="Add pergola">⛩ Pergola</button>
+    <button class="btn" onclick="quickAdd('pillar')" title="Add pillar">⬜ Pillar</button>
     <button class="btn" onclick="quickAdd('hot-tub')" title="Add hot tub">♨️ Hot Tub</button>
     <button class="btn" onclick="quickAdd('fire-pit')" title="Add fire pit">🔥 Fire Pit</button>
     <div style="width:1px;height:20px;background:var(--border2);margin:0 4px"></div>
@@ -591,34 +591,88 @@ const CC_CATALOG = [
     {name:"Marina Love Seat Swing (#8047)",width:56,depth:36,url:"https://www.casualcomfortusa.com/collections/marina/"}
   ]},
   {name:"Bayshore Collection",products:[
+    // Deep Seating
     {name:"Bayshore Club Chair (#6501)",width:31,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Love Seat (#6502)",width:54,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Sofa (#6503)",width:78,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Swivel Rocker (#6507)",width:31,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Ottoman (#6508)",width:23,depth:26.5,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Chaise Lounge (#6509)",width:25,depth:79,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Deep Seating Chaise (#6528)",width:31,depth:71.25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Left Arm Chaise (#6528-L)",width:27.5,depth:71.25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Right Arm Chaise (#6528-R)",width:27.5,depth:71.25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Sectional Corner Piece (#6500)",width:60,depth:41,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Left Arm Club Chair (#6501-L)",width:27.5,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Right Arm Club Chair (#6501-R)",width:27.5,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Left Arm Love Seat (#6502-L)",width:50.5,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Right Arm Love Seat (#6502-R)",width:50.5,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    // Dining chairs
     {name:"Bayshore Dining Chair (#6511)",width:20,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Dining Chair w/Arms (#6511A)",width:26,depth:26,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Swivel Dining Chair (#6517)",width:23.5,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Swivel Dining Chair w/Arms (#6517A)",width:26,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Counter Chair (#6510C)",width:20,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Counter Chair w/Arms (#6510CA)",width:26,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Pub Chair (#6510)",width:20,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Pub Chair w/Arms (#6510A)",width:26,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Swivel Dining Chair (#6517)",width:23.5,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Swivel Dining Chair w/Arms (#6517A)",width:26,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Swivel Counter Chair (#6516C)",width:23.5,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Swivel Counter Chair w/Arms (#6516CA)",width:26,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Swivel Pub Chair (#6516)",width:23.5,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Swivel Pub Chair w/Arms (#6516A)",width:26,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Sling Dining Chair (#6513)",width:20,depth:24,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Sling Dining Chair w/Arms (#6513A)",width:26,depth:24,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Sling Pub Chair (#6514)",width:20,depth:24,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Sling Pub Chair w/Arms (#6514A)",width:26,depth:24,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    // Benches — corrected dimensions from website
     {name:"Bayshore 4ft Dining Bench (#6512-4)",width:48,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore 5ft Dining Bench (#6512-5)",width:60,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore 6ft Dining Bench (#6512-6)",width:72,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Sling Dining Chair (#6513)",width:22,depth:24,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Sling Dining Chair w/Arms (#6513A)",width:24,depth:24,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore 28\" Table Dining (#3028)",width:28,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore 36\" Table Dining (#3036)",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore 48\" Table Dining (#3048)",width:48,depth:48,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore 60\" Table Dining (#3060)",width:60,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 6ft Dining Bench (#6512-6)",width:84,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 4ft Dining Bench w/Arms (#6512A-4)",width:55,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 5ft Dining Bench w/Arms (#6512A-5)",width:67,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 6ft Dining Bench w/Arms (#6512A-6)",width:91,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    // Round/Square tables — all 3 heights each
+    {name:"Bayshore 28\" Dining Table (#3028)",width:28,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 28\" Counter Table (#3628)",width:28,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 28\" Pub Table (#4028)",width:28,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 36\" Dining Table (#3036)",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 36\" Counter Table (#3636)",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 36\" Pub Table (#4036)",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 42\" Dining Table (#3042)",width:42,depth:42,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 42\" Counter Table (#3642)",width:42,depth:42,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 42\" Pub Table (#4042)",width:42,depth:42,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 48\" Dining Table (#3048)",width:48,depth:48,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 48\" Counter Table (#3648)",width:48,depth:48,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 48\" Pub Table (#4048)",width:48,depth:48,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 60\" Dining Table (#3060)",width:60,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 60\" Counter Table (#3660)",width:60,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 60\" Pub Table (#4060)",width:60,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    // 28-inch wide rectangular tables
+    {name:"Bayshore 28\"×60\" Dining Table (#2860D)",width:28,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 28\"×60\" Counter Table (#2860C)",width:28,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 28\"×60\" Pub Table (#2860P)",width:28,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 28\"×72\" Dining Table (#2872D)",width:28,depth:72,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 28\"×72\" Counter Table (#2872C)",width:28,depth:72,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 28\"×72\" Pub Table (#2872P)",width:28,depth:72,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 28\"×84\" Dining Table (#2884D)",width:28,depth:84,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 28\"×84\" Counter Table (#2884C)",width:28,depth:84,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 28\"×84\" Pub Table (#2884P)",width:28,depth:84,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    // 40-inch wide rectangular tables
+    {name:"Bayshore 40\"×60\" Dining Table (#4060D)",width:40,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×60\" Counter Table (#4060C)",width:40,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×60\" Pub Table (#4060P)",width:40,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×72\" Dining Table (#4072D)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×72\" Counter Table (#4072C)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×72\" Pub Table (#4072P)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×84\" Dining Table (#4084D)",width:40,depth:84,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×84\" Counter Table (#4084C)",width:40,depth:84,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×84\" Pub Table (#4084P)",width:40,depth:84,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×96\" Dining Table (#4096D)",width:40,depth:96,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×96\" Counter Table (#4096C)",width:40,depth:96,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×96\" Pub Table (#4096P)",width:40,depth:96,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×120\" Dining Table (#40120D)",width:40,depth:120,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×120\" Counter Table (#40120C)",width:40,depth:120,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 40\"×120\" Pub Table (#40120P)",width:40,depth:120,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    // Accent tables
     {name:"Bayshore End Table (#6520)",width:22,depth:24,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Cocktail Table (#6529)",width:22,depth:41,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
     {name:"Bayshore Conversation Table 36\" (#2136)",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
@@ -662,9 +716,21 @@ const CC_CATALOG = [
     {name:"Oceanside 36\" Round Table (#160-36)",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
     {name:"Oceanside 48\" Round Table (#160-48)",width:48,depth:48,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
     {name:"Oceanside 60\" Round Table (#160-60)",width:60,depth:60,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside 30\"x48\" Rect Table (#162-3048)",width:30,depth:48,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside 30\"x60\" Rect Table (#162-3060)",width:30,depth:60,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside 30\"x72\" Rect Table (#162-3072)",width:30,depth:72,url:"https://www.casualcomfortusa.com/collections/oceanside/"}
+    {name:"Oceanside 40\"x60\" Dining Table (#174-60)",width:40,depth:60,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x60\" Counter Table (#176-60C)",width:40,depth:60,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x60\" Pub Table (#175-60)",width:40,depth:60,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x72\" Dining Table (#174-72)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x72\" Counter Table (#176-72C)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x72\" Pub Table (#175-72)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x84\" Dining Table (#174-84)",width:40,depth:84,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x84\" Counter Table (#176-84C)",width:40,depth:84,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x84\" Pub Table (#175-84)",width:40,depth:84,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x96\" Dining Table (#174-96)",width:40,depth:96,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x96\" Counter Table (#176-96C)",width:40,depth:96,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x96\" Pub Table (#175-96)",width:40,depth:96,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x120\" Dining Table (#174-120)",width:40,depth:120,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x120\" Counter Table (#176-120C)",width:40,depth:120,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 40\"x120\" Pub Table (#175-120)",width:40,depth:120,url:"https://www.casualcomfortusa.com/collections/oceanside/"}
   ]},
   {name:"Fire Pit Collection",products:[
     {name:"Simplicity Fire Pit 4ft Conv (#920-4CONV)",width:36,depth:48,url:"https://www.casualcomfortusa.com/collections/fire-pit/"},
@@ -908,6 +974,8 @@ function quickAdd(type) {
     }
   } else if (type === 'post') {
     addElement({ id:newId('post'), type:'post', x:48, y:48, sizeInches:4, color:'#6B5140' });
+  } else if (type === 'pillar') {
+    addElement({ id:newId('pillar'), type:'pillar', x:48, y:48, sizeInches:10, color:'#F0EDE6' });
   } else if (type === 'pergola') {
     addElement({ id:newId('pergola'), type:'pergola', x:48, y:48, width:144, height:120, color:'#A08060', postColor:'#7A6050' });
   } else if (type === 'hot-tub') {
@@ -1238,53 +1306,81 @@ function drawPatio(ctx, el, ppi, sel) {
 }
 
 function drawStairs(ctx, el, ppi, sel) {
+  // Stairs are a deck component — polygon with wide boards (7" = 2× deck board)
+  // If no points array yet, build one from x/y/width/depth
+  if (!el.points || el.points.length < 3) {
+    el.points = [
+      {x:el.x, y:el.y},
+      {x:el.x+el.width, y:el.y},
+      {x:el.x+el.width, y:el.y+el.depth},
+      {x:el.x, y:el.y+el.depth}
+    ];
+  }
+  const pts = el.points.map(p => ({x: p.x*ppi+plan.panX, y: p.y*ppi+plan.panY}));
   const steps = Math.max(1, el.steps || 4);
-  const bx = el.x * ppi + plan.panX;
-  const by = el.y * ppi + plan.panY;
-  const w  = el.width  * ppi;
-  const d  = el.depth  * ppi;
-  const cx = bx + w/2, cy = by + d/2;
 
   // Fill
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
   ctx.fillStyle = el.color || '#8B7260';
-  ctx.fillRect(bx, by, w, d);
+  ctx.fill();
 
-  // Step nosing lines — evenly spaced across depth
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  // Board lines clipped to polygon — 7" boards (double deck width)
+  // Lines run across width (horizontal), one per step/board
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.clip();
+
+  const minX = Math.min(...pts.map(p=>p.x)), maxX = Math.max(...pts.map(p=>p.x));
+  const minY = Math.min(...pts.map(p=>p.y)), maxY = Math.max(...pts.map(p=>p.y));
+  const boardStep = 7 * ppi; // 7" per stair board (double deck's 3.5")
+
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
   ctx.lineWidth = 1;
-  for (let i = 1; i < steps; i++) {
-    const sy = by + (i / steps) * d;
-    ctx.beginPath(); ctx.moveTo(bx, sy); ctx.lineTo(bx + w, sy); ctx.stroke();
-    // Subtle highlight
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath(); ctx.moveTo(bx, sy+1); ctx.lineTo(bx+w, sy+1); ctx.stroke();
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1;
+  for (let ly = minY + boardStep; ly < maxY; ly += boardStep) {
+    ctx.beginPath(); ctx.moveTo(minX, ly); ctx.lineTo(maxX, ly); ctx.stroke();
+    // Subtle highlight (nosing edge)
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(minX, ly+1); ctx.lineTo(maxX, ly+1); ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
   }
 
-  // Descent arrow
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-  ctx.lineWidth = 1.5;
+  // Descent arrow (top = deck level, bottom = ground)
+  const cx = (minX+maxX)/2, cy = (minY+maxY)/2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(cx, by + 5); ctx.lineTo(cx, by + d - 5);
-  ctx.moveTo(cx-6, by+d-14); ctx.lineTo(cx, by+d-5); ctx.lineTo(cx+6, by+d-14);
+  ctx.moveTo(cx, minY+5); ctx.lineTo(cx, maxY-5);
+  ctx.moveTo(cx-6, maxY-14); ctx.lineTo(cx, maxY-5); ctx.lineTo(cx+6, maxY-14);
   ctx.stroke();
 
+  ctx.restore();
+
   // Outline
-  ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.35)';
-  ctx.lineWidth   = sel ? 2 : 1;
-  ctx.strokeRect(bx, by, w, d);
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = sel ? 2.5 : 1;
+  ctx.stroke();
 
   // Dim label
-  const lbl = fmtFt(el.width) + ' × ' + fmtFt(el.depth) + ' · ' + steps + ' steps';
+  const w = Math.max(...el.points.map(p=>p.x)) - Math.min(...el.points.map(p=>p.x));
+  const d = Math.max(...el.points.map(p=>p.y)) - Math.min(...el.points.map(p=>p.y));
+  const lbl = fmtFt(w) + ' × ' + fmtFt(d) + ' · ' + steps + ' steps';
   ctx.font = 'bold 9px Segoe UI,sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const tw = ctx.measureText(lbl).width + 8;
   ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(cx - tw/2, cy - 7, tw, 14);
   ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillText(lbl, cx, cy);
 
-  // Resize handles when selected
-  if (sel) drawResizeHandles(ctx, bx, by, w, d);
+  // Vertex handles when selected (same as deck)
+  if (sel) drawVertexHandles(ctx, el.points, ppi);
 }
 
 // Hit-test for stairs: transform click into stair local space, test against rect
@@ -1348,7 +1444,8 @@ function drawFurniture(ctx, el, ppi, sel) {
   ctx.fillRect(x, y, w, h);
 
   // Draw sketch details on top of the box
-  if (/corner\s*section|corner\s*piece/.test(name)) drawSketchCornerSection(ctx,f,c,x,y,w,h);
+  if (/corner\s*section|corner\s*piece/.test(name) && /45/.test(name)) drawSketch45Corner(ctx,f,c,x,y,w,h);
+  else if (/corner\s*section|corner\s*piece/.test(name)) drawSketchCornerSection(ctx,f,c,x,y,w,h);
   else if (/armless\s*section|armless\s*chair/.test(name)) drawSketchArmlessSection(ctx,f,c,x,y,w,h);
   else if (/left\s*arm/.test(name)) drawSketchSideSection(ctx,f,c,x,y,w,h,'left');
   else if (/right\s*arm/.test(name)) drawSketchSideSection(ctx,f,c,x,y,w,h,'right');
@@ -1371,10 +1468,16 @@ function drawFurniture(ctx, el, ppi, sel) {
   else if (/dining\s*table|rect.*table|table/.test(name)) drawSketchRectTable(ctx,f,x,y,w,h);
   else drawSketchGenericSeating(ctx,f,c,x,y,w,h);
 
-  // Outer selection border
-  ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.2)';
-  ctx.lineWidth = sel ? 2 : 1;
-  ctx.strokeRect(x, y, w, h);
+  // Outer selection border — triangle for 45° corner, rect for everything else
+  if (/corner\s*section|corner\s*piece/.test(name) && /45/.test(name)) {
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+w,y); ctx.lineTo(x,y+h); ctx.closePath();
+    ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = sel ? 2 : 1; ctx.stroke();
+  } else {
+    ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = sel ? 2 : 1;
+    ctx.strokeRect(x, y, w, h);
+  }
 
   // Name badge at bottom of piece
   const shortName = abbreviateFurnName(el.name||'Furniture');
@@ -1496,6 +1599,64 @@ function drawSketchSideSection(ctx,f,c,x,y,w,h,side) {
   ctx.fillStyle=darken(f,10); ctx.fillRect(x,y+bh+h*0.52,w,h-bh-h*0.52);
 }
 
+function drawSketch45Corner(ctx,f,c,x,y,w,h) {
+  // The 45° sectional corner is a right-isosceles triangle in plan view.
+  // Two straight frame rails run along the left edge and top edge.
+  // The cushion fills the diagonal interior. The hypotenuse faces into the room.
+  const bw = Math.min(w*0.25, 9); // frame/back thickness
+
+  // Clip to the triangle so all fills stay inside
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x, y);           // top-left
+  ctx.lineTo(x+w, y);         // top-right
+  ctx.lineTo(x, y+h);         // bottom-left
+  ctx.closePath();
+  ctx.clip();
+
+  // Base fill
+  ctx.fillStyle = f;
+  ctx.fill();
+
+  // Back rail — left edge (vertical)
+  ctx.fillStyle = darken(f,15);
+  ctx.fillRect(x, y, bw, h);
+
+  // Back rail — top edge (horizontal)
+  ctx.fillRect(x, y, w, bw);
+
+  ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, bw, h);
+  ctx.strokeRect(x, y, w, bw);
+
+  // Diagonal cushion — triangle inset from the hypotenuse
+  const inset = bw + 2;
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.moveTo(x+inset, y+inset);
+  ctx.lineTo(x+w-inset, y+inset);
+  ctx.lineTo(x+inset, y+h-inset);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 0.8; ctx.stroke();
+
+  // Diagonal face line (hypotenuse — where it connects to adjacent sectional pieces)
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(x+w, y); ctx.lineTo(x, y+h); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.restore();
+
+  // Triangle outline (overrides the full rect outline drawn in drawFurniture)
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x+w, y);
+  ctx.lineTo(x, y+h);
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
 function drawSketchCornerSection(ctx,f,c,x,y,w,h) {
   // Square corner piece — cushion fills most of it, diagonal joint lines show where pieces connect
   ctx.fillStyle=darken(f,15);
@@ -1511,13 +1672,10 @@ function drawSketchCornerSection(ctx,f,c,x,y,w,h) {
   // Front apron
   ctx.fillStyle=darken(f,10); ctx.fillRect(x+w*0.28,y+h*0.8,w*0.72,h*0.2);
   ctx.fillRect(x,y+h*0.8,w*0.28,h*0.2);
-  // DIAGONAL joint lines — show where adjacent sectional pieces connect
+  // DIAGONAL joint lines
   ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
-  // Right edge joint
   ctx.beginPath(); ctx.moveTo(x+w,y+h*0.28); ctx.lineTo(x+w,y+h); ctx.stroke();
-  // Bottom edge joint
   ctx.beginPath(); ctx.moveTo(x+w*0.28,y+h); ctx.lineTo(x+w,y+h); ctx.stroke();
-  // Corner angle indicator
   ctx.strokeStyle='rgba(79,195,247,0.4)'; ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(x+w*0.28,y+h*0.28); ctx.lineTo(x+w,y+h); ctx.stroke();
   ctx.setLineDash([]);
@@ -1914,15 +2072,11 @@ function getCanvasPos(e) {
 }
 
 function hitTestResizeHandle(cx, cy, el, ppi) {
-  // Furniture: fixed catalog dimensions, never resizable
-  // Stairs: resize via drag handles (no rotation involved)
-  if (el.type==='furniture') return null;
+  if (el.type==='furniture'||el.type==='stairs'||el.type==='deck'||el.type==='merged-deck') return null;
   const HIT = isTouchDevice ? 16 : 8;
   let x, y, w, h;
   if (el.type==='patio') {
     x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.height*ppi;
-  } else if (el.type==='stairs') {
-    x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.depth*ppi;
   } else if (el.type==='pergola') {
     x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.height*ppi;
   } else if (el.type==='hot-tub') {
@@ -1940,13 +2094,7 @@ function hitTestResizeHandle(cx, cy, el, ppi) {
 
 function hitTestVertex(cx, cy, el, ppi) {
   const HIT = isTouchDevice ? 14 : 8;
-  // For stairs with polygon points, use those; for stairs without, use computed corners
-  let pts;
-  if (el.type === 'stairs') {
-    pts = el.points && el.points.length >= 3 ? el.points : getStairPointsInches(el);
-  } else {
-    pts = el.points || el.outline;
-  }
+  const pts = el.points || el.outline;
   if (!pts) return null;
   for(let i=0;i<pts.length;i++){
     const vx=pts[i].x*ppi+plan.panX, vy=pts[i].y*ppi+plan.panY;
@@ -1974,7 +2122,13 @@ function hitTestElement(cx, cy, ppi) {
     } else if (el.type==='pergola') {
       if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.height) return el.id;
     } else if (el.type==='stairs') {
-      if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.depth) return el.id;
+      // Stairs now have polygon points — same hit-test as deck
+      const pts = el.points;
+      if (pts && pts.length >= 3) {
+        if (pointInPolygon(ix, iy, pts)) return el.id;
+      } else {
+        if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.depth) return el.id;
+      }
     } else if (el.type==='furniture') {
       // Account for rotation
       const angle = (el.rotation||0) * Math.PI/180;
@@ -2030,12 +2184,12 @@ function onMouseDown(e) {
   // may return null or a different element for those clicks.
   const selEl = plan.elements.find(el=>el.id===plan.selectedId);
   if (selEl) {
-    // Deck / merged-deck: vertex corner dots and midpoint insert dots
-    if (selEl.type==='deck' || selEl.type==='merged-deck') {
+    // Deck / merged-deck / stairs: vertex corner dots and midpoint insert dots
+    if (selEl.type==='deck' || selEl.type==='merged-deck' || selEl.type==='stairs') {
+      const pts = selEl.points || selEl.outline;
       const hit = hitTestVertex(pos.x, pos.y, selEl, ppi);
       if (hit) {
         if (hit.isInsert) {
-          const pts = selEl.points||selEl.outline;
           const a=pts[hit.idx], b=pts[(hit.idx+1)%pts.length];
           pts.splice(hit.idx+1, 0, {x:(a.x+b.x)/2, y:(a.y+b.y)/2});
           isDragVertex=true; dragVertexId=selEl.id; dragVertexIdx=hit.idx+1;
@@ -2078,15 +2232,13 @@ function onMouseDown(e) {
     if (el) {
       isDragging=true; dragId=hitId;
       const ipos=canvasToInches(pos.x,pos.y);
-      if (el.type==='deck'||el.type==='merged-deck') {
+      if (el.type==='deck'||el.type==='merged-deck'||el.type==='stairs') {
         const pts=el.points||el.outline;
         const cx=pts.reduce((s,p)=>s+p.x,0)/pts.length;
         const cy=pts.reduce((s,p)=>s+p.y,0)/pts.length;
         dragOffX=ipos.x-cx; dragOffY=ipos.y-cy;
       } else if (el.type==='railing') {
         dragOffX=ipos.x-el.startX; dragOffY=ipos.y-el.startY;
-      } else if (el.type==='fire-pit') {
-        dragOffX=ipos.x-el.x; dragOffY=ipos.y-el.y;
       } else {
         dragOffX=ipos.x-el.x; dragOffY=ipos.y-el.y;
       }
@@ -2145,7 +2297,7 @@ function onMouseMove(e) {
     if(!el) return;
     const ipos=canvasToInches(pos.x,pos.y);
     const nx=snapToGrid(ipos.x-dragOffX), ny=snapToGrid(ipos.y-dragOffY);
-    if(el.type==='deck'||el.type==='merged-deck'){
+    if(el.type==='deck'||el.type==='merged-deck'||el.type==='stairs'){
       const pts=el.points||el.outline;
       const targetCx = snapToGrid(ipos.x - dragOffX);
       const targetCy = snapToGrid(ipos.y - dragOffY);
@@ -2153,6 +2305,12 @@ function onMouseMove(e) {
       const curCy = pts.reduce((s,p)=>s+p.y,0)/pts.length;
       const dx = targetCx - curCx, dy = targetCy - curCy;
       pts.forEach(p=>{p.x+=dx; p.y+=dy;});
+      // Keep x/y/width/depth in sync for stairs
+      if (el.type==='stairs') {
+        const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+        el.x=Math.min(...xs); el.y=Math.min(...ys);
+        el.width=Math.max(...xs)-el.x; el.depth=Math.max(...ys)-el.y;
+      }
     } else if(el.type==='railing'){
       const lenX=el.endX-el.startX, lenY=el.endY-el.startY;
       const newSX=snapToGrid(ipos.x-dragOffX), newSY=snapToGrid(ipos.y-dragOffY);
@@ -2213,7 +2371,7 @@ function onKeyDown(e) {
   }
   if (e.key==='r'||e.key==='R') {
     const el=plan.elements.find(e=>e.id===plan.selectedId);
-    if (el&&el.rotation!==undefined) { el.rotation=(el.rotation+15)%360; setDirty(true); redraw(); }
+    if (el&&el.type==='furniture') { rotateFurniture(10); }
   }
   if (e.key==='Escape') { plan.selectedId=null; redraw(); renderProps(); }
 
@@ -2610,8 +2768,8 @@ function renderProps() {
       <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" oninput="updateProp('width',+this.value)"step="1"/></div>
       <div class="prop-row"><label>Depth (in)</label><input type="number" value="${Math.round(el.depth)}" oninput="updateProp('depth',+this.value)"step="1"/></div>
       <div class="prop-row"><label>Steps</label><input type="number" value="${el.steps||4}" oninput="updateProp('steps',+this.value)" min="1" max="20"step="1"/></div>
-      <div class="prop-row"><label>Angle (°)</label><input type="number" value="${el.angle||0}" oninput="updateProp('angle',+this.value)"step="1"/></div>
-    </div>`;
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:2px">Drag corner/edge dots to reshape</div>`;
   } else if(el.type==='railing'){
     html+=`<div class="prop-row"><label>Color</label>
       <div style="display:flex;gap:6px;align-items:center">
@@ -2621,7 +2779,12 @@ function renderProps() {
     </div>`;
   } else if(el.type==='furniture'){
     html+=`<div class="prop-row"><label>Name</label><input value="${el.name||''}" onchange="updateProp('name',this.value)"/></div>
-    <div class="prop-row"><label>Rotation (°)</label><input type="number" value="${el.rotation||0}" style="width:80px" oninput="updateProp('rotation',+this.value)"step="1"/></div>`;
+    <div class="prop-row"><label>Rotation</label>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="btn" onclick="rotateFurniture(-10)" style="font-size:13px;padding:2px 10px" title="Rotate -10°">↺ −10°</button>
+      <button class="btn" onclick="rotateFurniture(10)" style="font-size:13px;padding:2px 10px" title="Rotate +10°">↻ +10°</button>
+      <span id="rotation-display" style="font-size:11px;color:var(--text2);min-width:32px;text-align:right">${el.rotation||0}°</span>
+    </div></div>`;
 
     // Manufacturer — CC gets primary + secondary, NC gets frame + cushion
     const isCC = el.manufacturer === 'casual-comfort';
@@ -2732,11 +2895,28 @@ function getDimBadge(el) {
 
 function getColorName(hex) { return ALL_COLORS.find(c=>c.hex===hex)?.name||null; }
 
+function rotateFurniture(degrees) {
+  const el = plan.elements.find(e=>e.id===plan.selectedId);
+  if (!el || el.type !== 'furniture') return;
+  el.rotation = ((el.rotation||0) + degrees + 360) % 360;
+  const disp = document.getElementById('rotation-display');
+  if (disp) disp.textContent = el.rotation + '°';
+  setDirty(true); redraw();
+}
+
 function updateProp(key, val) {
   const el=plan.elements.find(e=>e.id===plan.selectedId);
   if(!el) return;
   el[key]=val;
-  // Update label for patio/furniture
+  // For stairs: rebuild points[] from updated dimensions
+  if(el.type==='stairs' && (key==='width'||key==='depth'||key==='x'||key==='y')) {
+    el.points = [
+      {x:el.x, y:el.y},
+      {x:el.x+el.width, y:el.y},
+      {x:el.x+el.width, y:el.y+el.depth},
+      {x:el.x, y:el.y+el.depth}
+    ];
+  }
   if(el.type==='patio') el.label=`Patio ${fmtFt(el.width)}×${fmtFt(el.height)}`;
   setDirty(true); redraw(); renderProps();
 }
