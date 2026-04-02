@@ -284,7 +284,7 @@ canvas{display:block;cursor:crosshair}
     <!-- CANVAS -->
     <div id="canvas-wrap">
       <canvas id="canvas"></canvas>
-      <div id="canvas-info">Scale: <span id="scale-info">2.0</span> px/in | Grid: <span id="grid-info">1"</span> | Snap: <span id="snap-info">ON</span> | Drag=move · R=rotate · Scroll=zoom · Alt+drag=pan · Del=delete</div>
+      <div id="canvas-info">Scale: <span id="scale-info">2.0</span> px/in | Grid: <span id="grid-info">1"</span> | Snap: <span id="snap-info">ON</span> | Drag=move · R=rotate · Scroll=zoom · 2-finger=pan/zoom · Alt+drag=pan · Del=delete</div>
       <div id="dim-overlay"></div>
       <div id="merge-banner">
         <span id="merge-msg"></span>
@@ -2687,7 +2687,12 @@ canvas.addEventListener('touchmove', e=>{
     const newZoom=Math.max(0.2,Math.min(8,plan.zoom*factor));
     const scale=newZoom/plan.zoom;
     plan.panX=px-(px-plan.panX)*scale; plan.panY=py-(py-plan.panY)*scale; plan.zoom=newZoom;
-    lastTouchDist=dist; redraw();
+    // Two-finger pan: also shift by midpoint movement
+    if(lastTouchMid){
+      plan.panX += (px - (lastTouchMid.x-r.left));
+      plan.panY += (py - (lastTouchMid.y-r.top));
+    }
+    lastTouchDist=dist; lastTouchMid=mid; redraw();
   } else if(e.touches.length===1){
     const r=canvas.getBoundingClientRect();
     onMouseMove({clientX:e.touches[0].clientX, clientY:e.touches[0].clientY, target:canvas, button:0});
