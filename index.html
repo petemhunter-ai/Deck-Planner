@@ -52,12 +52,15 @@ canvas{display:block;cursor:crosshair}
 #canvas-chat-bar{
   position:absolute;bottom:0;left:0;right:0;
   display:flex;align-items:center;gap:8px;
-  padding:8px 12px;
-  background:rgba(18,22,30,0.88);
-  backdrop-filter:blur(8px);
-  border-top:1px solid var(--border2);
+  padding:10px 14px;
+  background:rgba(18,22,30,0.92);
+  backdrop-filter:blur(10px);
+  border-top:1px solid rgba(79,195,247,0.25);
   z-index:20;
   box-sizing:border-box;
+}
+@media (max-width:767px),(orientation:portrait) and (max-width:1024px){
+  #canvas-chat-bar{ bottom:52px; } /* clear mobile tab bar */
 }
 #canvas-chat-bar input{
   flex:1;height:38px;
@@ -1451,17 +1454,11 @@ function drawPatio(ctx, el, ppi, sel) {
 
 function drawStairs(ctx, el, ppi, sel) {
   const steps = Math.max(1, el.steps || 4);
-  const angle = (el.angle || 0) * Math.PI / 180;
   const bx = el.x * ppi + plan.panX;
   const by = el.y * ppi + plan.panY;
   const w  = el.width  * ppi;
   const d  = el.depth  * ppi;
   const cx = bx + w/2, cy = by + d/2;
-
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(angle);
-  ctx.translate(-cx, -cy);
 
   // Fill
   ctx.fillStyle = el.color || '#8B7260';
@@ -1473,50 +1470,36 @@ function drawStairs(ctx, el, ppi, sel) {
   for (let i = 1; i < steps; i++) {
     const sy = by + (i / steps) * d;
     ctx.beginPath(); ctx.moveTo(bx, sy); ctx.lineTo(bx + w, sy); ctx.stroke();
+    // Subtle highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(bx, sy+1); ctx.lineTo(bx+w, sy+1); ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1;
   }
 
-  // Descent arrow (top = landing, bottom = ground)
-  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  // Descent arrow
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
   ctx.lineWidth = 1.5;
-  const ax = bx + w/2;
   ctx.beginPath();
-  ctx.moveTo(ax, by + 6); ctx.lineTo(ax, by + d - 6);
-  ctx.moveTo(ax - 7, by + d - 16); ctx.lineTo(ax, by + d - 6); ctx.lineTo(ax + 7, by + d - 16);
+  ctx.moveTo(cx, by + 5); ctx.lineTo(cx, by + d - 5);
+  ctx.moveTo(cx-6, by+d-14); ctx.lineTo(cx, by+d-5); ctx.lineTo(cx+6, by+d-14);
   ctx.stroke();
 
-  // Selection outline
+  // Outline
   ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.35)';
   ctx.lineWidth   = sel ? 2 : 1;
   ctx.strokeRect(bx, by, w, d);
 
   // Dim label
-  const lbl = fmtFt(el.width) + '×' + fmtFt(el.depth) + ' · ' + steps + ' steps' + (el.angle ? ' · ' + el.angle + '°' : '');
+  const lbl = fmtFt(el.width) + ' × ' + fmtFt(el.depth) + ' · ' + steps + ' steps';
   ctx.font = 'bold 9px Segoe UI,sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const tw = ctx.measureText(lbl).width + 8;
   ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(cx - tw/2, cy - 7, tw, 14);
   ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillText(lbl, cx, cy);
 
-  ctx.restore(); // end rotation
-
   // Resize handles when selected
-  if (sel) {
-    // Draw rotated resize handles
-    ctx.save();
-    ctx.translate(cx, cy); ctx.rotate(angle); ctx.translate(-cx, -cy);
-    const HIT = isTouchDevice ? 10 : 7;
-    const corners = [
-      {x:bx,   y:by},   {x:bx+w, y:by},
-      {x:bx+w, y:by+d}, {x:bx,   y:by+d}
-    ];
-    corners.forEach(p => {
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(p.x - HIT/2, p.y - HIT/2, HIT, HIT);
-      ctx.strokeStyle = '#4FC3F7'; ctx.lineWidth = 1.5;
-      ctx.strokeRect(p.x - HIT/2, p.y - HIT/2, HIT, HIT);
-    });
-    ctx.restore();
-  }
+  if (sel) drawResizeHandles(ctx, bx, by, w, d);
 }
 
 // Hit-test for stairs: transform click into stair local space, test against rect
@@ -2180,12 +2163,14 @@ function getCanvasPos(e) {
 
 function hitTestResizeHandle(cx, cy, el, ppi) {
   // Furniture: fixed catalog dimensions, never resizable
-  // Stairs: width/depth/steps/angle all set via props panel — no handles
-  if (el.type==='furniture' || el.type==='stairs') return null;
+  // Stairs: resize via drag handles (no rotation involved)
+  if (el.type==='furniture') return null;
   const HIT = isTouchDevice ? 16 : 8;
   let x, y, w, h;
   if (el.type==='patio') {
     x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.height*ppi;
+  } else if (el.type==='stairs') {
+    x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.depth*ppi;
   } else if (el.type==='pergola') {
     x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.height*ppi;
   } else if (el.type==='hot-tub') {
@@ -2237,8 +2222,7 @@ function hitTestElement(cx, cy, ppi) {
     } else if (el.type==='pergola') {
       if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.height) return el.id;
     } else if (el.type==='stairs') {
-      // Use dedicated rotated hit-test
-      if (stairHitTest(el, ix, iy)) return el.id;
+      if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.depth) return el.id;
     } else if (el.type==='furniture') {
       // Account for rotation
       const angle = (el.rotation||0) * Math.PI/180;
@@ -2289,27 +2273,13 @@ function onMouseDown(e) {
     canvas.style.cursor='grabbing'; return;
   }
 
-  // First figure out what was clicked
-  const hitId = hitTestElement(pos.x, pos.y, ppi);
-
-  // Only check vertex / resize handles if the click is INSIDE the currently selected element
-  // (prevents handles of element A stealing clicks meant for element B)
+  // Check handles on the selected element FIRST — before hit-testing anything else.
+  // Vertex dots and resize handles sit on/outside the element boundary so hitTestElement
+  // may return null or a different element for those clicks.
   const selEl = plan.elements.find(el=>el.id===plan.selectedId);
-  const clickIsOnSelected = selEl && hitId === plan.selectedId;
-
-  if (selEl && clickIsOnSelected) {
-    // Stair corner handles (rotated resize)
-    if (selEl.type === 'stairs') {
-      const hname = stairHandleHitTest(pos.x, pos.y, selEl, ppi);
-      if (hname) {
-        isResizing = true; resizeId = selEl.id; resizeHandle = hname;
-        const ipos = canvasToInches(pos.x, pos.y);
-        resizeStart = { mx:ipos.x, my:ipos.y, x:selEl.x, y:selEl.y, w:selEl.width, h:selEl.depth };
-        return;
-      }
-    }
-    // Deck / merged-deck vertex handles
-    if (selEl.type==='deck'||selEl.type==='merged-deck') {
+  if (selEl) {
+    // Deck / merged-deck: vertex corner dots and midpoint insert dots
+    if (selEl.type==='deck' || selEl.type==='merged-deck') {
       const hit = hitTestVertex(pos.x, pos.y, selEl, ppi);
       if (hit) {
         if (hit.isInsert) {
@@ -2323,7 +2293,8 @@ function onMouseDown(e) {
         setDirty(true); return;
       }
     }
-    // Standard resize handles (patio, pergola, hot-tub, fire-pit)
+    // Resize handles — only check if click is near the selected element's bounding box
+    // (prevents patio handles from intercepting a click on a distant deck)
     const rh = hitTestResizeHandle(pos.x, pos.y, selEl, ppi);
     if (rh) {
       isResizing=true; resizeId=selEl.id; resizeHandle=rh.name;
@@ -2337,7 +2308,16 @@ function onMouseDown(e) {
     }
   }
 
-  // Select whatever was clicked
+  // Hit-test element bodies
+  const hitId = hitTestElement(pos.x, pos.y, ppi);
+
+  // Clicking empty canvas deselects
+  if (!hitId) {
+    plan.selectedId = null;
+    renderProps(); redraw(); return;
+  }
+
+  // Select the clicked element
   plan.selectedId = hitId;
   renderProps();
 
@@ -2390,40 +2370,22 @@ function onMouseMove(e) {
     const el=plan.elements.find(e=>e.id===resizeId);
     if(!el) return;
     const ipos=canvasToInches(pos.x,pos.y);
-
-    if (el.type === 'stairs') {
-      // Resize in rotated local space
-      const angle = (el.angle||0) * Math.PI/180;
-      const cos = Math.cos(-angle), sin = Math.sin(-angle);
-      // Rotate the drag delta into stair local space
-      const rawDx = ipos.x - resizeStart.mx, rawDy = ipos.y - resizeStart.my;
-      const ldx = cos*rawDx - sin*rawDy;
-      const ldy = sin*rawDx + cos*rawDy;
-      let nx=resizeStart.x, ny=resizeStart.y, nw=resizeStart.w, nh=resizeStart.h;
-      if (resizeHandle==='se'){ nw=Math.max(12,resizeStart.w+ldx); nh=Math.max(12,resizeStart.h+ldy); }
-      else if (resizeHandle==='ne'){ nw=Math.max(12,resizeStart.w+ldx); nh=Math.max(12,resizeStart.h-ldy); ny=resizeStart.y+ldy; }
-      else if (resizeHandle==='sw'){ nw=Math.max(12,resizeStart.w-ldx); nh=Math.max(12,resizeStart.h+ldy); nx=resizeStart.x+ldx; }
-      else if (resizeHandle==='nw'){ nw=Math.max(12,resizeStart.w-ldx); nh=Math.max(12,resizeStart.h-ldy); nx=resizeStart.x+ldx; ny=resizeStart.y+ldy; }
-      el.x=snapToGrid(nx); el.y=snapToGrid(ny);
-      el.width=snapToGrid(nw); el.depth=snapToGrid(nh);
-      liveResizeDims={w:el.width,h:el.depth};
-      showDimOverlay(el.width,el.depth,pos.x,pos.y);
-    } else {
-      const dx=ipos.x-resizeStart.mx, dy=ipos.y-resizeStart.my;
-      let nx=resizeStart.x, ny=resizeStart.y, nw=resizeStart.w, nh=resizeStart.h;
-      if(resizeHandle.includes('e')) nw=Math.max(12,resizeStart.w+dx);
-      if(resizeHandle.includes('w')){ nw=Math.max(12,resizeStart.w-dx); nx=resizeStart.x+dx; }
-      if(resizeHandle.includes('s')) nh=Math.max(12,resizeStart.h+dy);
-      if(resizeHandle.includes('n')){ nh=Math.max(12,resizeStart.h-dy); ny=resizeStart.y+dy; }
-      nw=snapToGrid(nw); nh=snapToGrid(nh); nx=snapToGrid(nx); ny=snapToGrid(ny);
-      if(el.type==='patio'||el.type==='pergola'||el.type==='hot-tub'){
-        el.x=nx; el.y=ny; el.width=nw; el.height=nh;
-      } else if(el.type==='fire-pit'){
-        el.x=nx+nw/2; el.y=ny+nh/2; el.diameter=Math.max(nw,nh);
-      }
-      liveResizeDims = { w:nw, h:nh };
-      showDimOverlay(nw, nh, pos.x, pos.y);
+    const dx=ipos.x-resizeStart.mx, dy=ipos.y-resizeStart.my;
+    let nx=resizeStart.x, ny=resizeStart.y, nw=resizeStart.w, nh=resizeStart.h;
+    if(resizeHandle.includes('e')) nw=Math.max(12,resizeStart.w+dx);
+    if(resizeHandle.includes('w')){ nw=Math.max(12,resizeStart.w-dx); nx=resizeStart.x+dx; }
+    if(resizeHandle.includes('s')) nh=Math.max(12,resizeStart.h+dy);
+    if(resizeHandle.includes('n')){ nh=Math.max(12,resizeStart.h-dy); ny=resizeStart.y+dy; }
+    nw=snapToGrid(nw); nh=snapToGrid(nh); nx=snapToGrid(nx); ny=snapToGrid(ny);
+    if(el.type==='patio'||el.type==='pergola'||el.type==='hot-tub'){
+      el.x=nx; el.y=ny; el.width=nw; el.height=nh;
+    } else if(el.type==='stairs'){
+      el.x=nx; el.y=ny; el.width=nw; el.depth=nh;
+    } else if(el.type==='fire-pit'){
+      el.x=nx+nw/2; el.y=ny+nh/2; el.diameter=Math.max(nw,nh);
     }
+    liveResizeDims = { w:nw, h:nh };
+    showDimOverlay(nw, nh, pos.x, pos.y);
     setDirty(true); redraw(); return;
   }
   if (isDragging && dragId) {
