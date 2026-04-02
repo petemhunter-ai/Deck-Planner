@@ -176,45 +176,9 @@ canvas{display:block;cursor:crosshair}
 
 /* ── iPad / Mobile responsive layout ── */
 /* Bottom tab bar on small screens */
-#mobile-tabs{display:none;height:52px;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0;align-items:stretch}
-.mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:var(--text3);cursor:pointer;transition:color .15s;border:none;background:none;padding:0}
-.mob-tab svg{width:20px;height:20px}
-.mob-tab.active{color:var(--primary)}
-.mob-tab.active svg{stroke:var(--primary)}
 
-/* MOBILE CHAT BAR — always visible above tab bar */
-#mobile-chat-bar{
-  display:none;
-  position:fixed;
-  bottom:52px;
-  left:0;right:0;
-  background:var(--surface);
-  border-top:1px solid var(--border2);
-  padding:8px 10px;
-  z-index:60;
-  gap:8px;
-  align-items:center;
-}
-#mobile-chat-bar input{
-  flex:1;height:40px;font-size:16px !important;
-  border-radius:10px;padding:0 12px;
-  background:var(--surface2);border:1px solid var(--border2);
-  color:var(--text);
-}
-#mobile-chat-bar input:focus{border-color:var(--primary);outline:none}
-#mobile-chat-bar button{
-  height:40px;padding:0 16px;border-radius:10px;
-  background:var(--primary-dim);color:var(--primary);
-  border:1px solid var(--primary);font-size:14px;font-weight:600;
-  white-space:nowrap;flex-shrink:0;
-}
-#mobile-chat-bar button:active{background:var(--primary);color:#000}
 
 /* Slide-up drawer for panels on mobile */
-#mobile-drawer{display:none;position:fixed;bottom:52px;left:0;right:0;background:var(--surface);border-top:2px solid var(--border2);border-radius:16px 16px 0 0;z-index:50;max-height:55vh;overflow:hidden;flex-direction:column;transform:translateY(100%);transition:transform .3s ease}
-#mobile-drawer.open{transform:translateY(0)}
-#drawer-handle{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:10px auto 6px;flex-shrink:0;cursor:pointer}
-#drawer-content{flex:1;overflow-y:auto;padding:0 0 8px}
 
 /* iPad landscape: keep side panel but wider canvas */
 @media (min-width:768px) and (orientation:landscape){
@@ -472,77 +436,9 @@ canvas{display:block;cursor:crosshair}
   </div>
 </div>
 
-<!-- MOBILE CHAT BAR — always visible above tab bar on iPad/phone -->
-<div id="mobile-chat-bar">
-  <input type="text" id="mobile-chat-input" placeholder="Describe what you want to build…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-  <button onclick="sendMobileChatBar()">Send</button>
-</div>
 
-<!-- MOBILE BOTTOM TAB BAR -->
-<div id="mobile-tabs">
-  <button class="mob-tab active" id="mtab-canvas" onclick="showMobilePanel('canvas')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="8" width="20" height="14" rx="1"/><line x1="6" y1="2" x2="6" y2="8"/><line x1="18" y1="2" x2="18" y2="8"/></svg>
-    Canvas
-  </button>
-  <button class="mob-tab" id="mtab-add" onclick="showMobilePanel('add')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-    Add
-  </button>
-  <button class="mob-tab" id="mtab-props" onclick="showMobilePanel('props')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-    Properties
-  </button>
-  <button class="mob-tab" id="mtab-chat" onclick="showMobilePanel('chat')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    AI Chat
-  </button>
-  <button class="mob-tab" id="mtab-save" onclick="saveProject()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-    Save
-  </button>
-</div>
 
 <!-- FLOATING PROMPT BUTTON — always visible on mobile -->
-<button id="prompt-fab" onclick="openPromptModal()" title="Type a command" style="
-  display:none;position:fixed;bottom:112px;right:16px;z-index:80;
-  width:52px;height:52px;border-radius:50%;
-  background:var(--primary);color:#000;
-  border:none;font-size:22px;cursor:pointer;
-  box-shadow:0 4px 16px rgba(79,195,247,0.5);
-  align-items:center;justify-content:center;
-">💬</button>
-
-<!-- PROMPT POPUP MODAL -->
-<div id="prompt-modal" class="modal-backdrop" style="display:none;align-items:flex-end;padding-bottom:0">
-  <div style="background:var(--surface);border-top:2px solid var(--border2);border-radius:16px 16px 0 0;width:100%;padding:20px 16px 32px;box-shadow:0 -8px 32px rgba(0,0,0,0.5)">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-      <div class="ai-dot"></div>
-      <span style="font-size:14px;font-weight:600;color:var(--text)">AI Command — Tell me what to build</span>
-      <button onclick="closeModal('prompt-modal')" style="margin-left:auto;color:var(--text3);font-size:18px;cursor:pointer;background:none;border:none">✕</button>
-    </div>
-    <textarea id="prompt-textarea" placeholder="e.g. Add a 20x16 deck with a patio on the south side and railing around the north edge…" style="
-      width:100%;height:90px;border-radius:10px;padding:12px;
-      font-size:16px;resize:none;
-      background:var(--surface2);border:1px solid var(--border2);
-      color:var(--text);font-family:inherit;line-height:1.5;
-    "></textarea>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;margin-bottom:12px">
-      <button class="qbtn" onclick="setPrompt('Add a 20x16 deck')">Add deck</button>
-      <button class="qbtn" onclick="setPrompt('Add patio south with rounded SE corner')">Add patio</button>
-      <button class="qbtn" onclick="setPrompt('Add railing around')">Railing around</button>
-      <button class="qbtn" onclick="setPrompt('Merge deck segments')">Merge deck</button>
-      <button class="qbtn" onclick="setPrompt('help')">Show help</button>
-    </div>
-    <button onclick="sendPromptModal()" style="
-      width:100%;height:46px;border-radius:10px;
-      background:var(--primary);color:#000;
-      border:none;font-size:15px;font-weight:700;cursor:pointer;
-    ">Send ↵</button>
-  </div>
-</div>
-  <div id="drawer-handle" onclick="closeMobileDrawer()"></div>
-  <div id="drawer-content"></div>
-</div>
 
 <script>
 // ============================================================
@@ -991,60 +887,6 @@ let catalogCushion = null;
 // ============================================================
 // PROMPT MODAL
 // ============================================================
-function openPromptModal() {
-  document.getElementById('prompt-modal').style.display='flex';
-  setTimeout(()=>document.getElementById('prompt-textarea').focus(), 100);
-}
-function setPrompt(text) {
-  document.getElementById('prompt-textarea').value = text;
-  document.getElementById('prompt-textarea').focus();
-}
-async function sendPromptModal() {
-  const text = document.getElementById('prompt-textarea').value.trim();
-  if (!text) return;
-  document.getElementById('prompt-textarea').value = '';
-  closeModal('prompt-modal');
-  // Route through mobile chat bar
-  addChatMsg(text, 'user');
-  chatHistory.push({role:'user', content:text});
-  const localResult = parseCommand(text);
-  if (localResult.success) {
-    addChatMsg(localResult.msg, 'assistant');
-    showMobileToast(localResult.msg);
-    chatHistory.push({role:'assistant', content:localResult.msg});
-    return;
-  }
-  if (!localResult.msg.startsWith("I didn't understand")) {
-    addChatMsg(localResult.msg, 'err');
-    showMobileToast(localResult.msg, true);
-    return;
-  }
-  // AI fallback
-  showMobileToast('Thinking…');
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:512,
-        system:`Translate user deck planner requests into commands. Current plan: ${buildPlanSummary()}. Reply with commands + ✓ explanation.`,
-        messages: chatHistory.slice(-6)})
-    });
-    const data = await resp.json();
-    const reply = data.content?.[0]?.text||'';
-    const lines = reply.trim().split('\n').filter(l=>l.trim());
-    let explanation='', anySuccess=false;
-    for (const line of lines) {
-      if(line.startsWith('✓')){explanation=line;continue;}
-      const r=parseCommand(line.trim());
-      if(r.success) anySuccess=true;
-    }
-    const msg = explanation||(anySuccess?'✓ Done!':reply);
-    addChatMsg(msg, anySuccess?'assistant':'err');
-    showMobileToast(msg, !anySuccess);
-    chatHistory.push({role:'assistant',content:msg});
-  } catch(e) {
-    addChatMsg("Couldn't process that. Try: \"Add deck 20x16\"", 'err');
-  }
-}
 // Enter key in prompt textarea
 document.getElementById('prompt-textarea').addEventListener('keydown', e=>{
   if(e.key==='Enter' && !e.shiftKey){e.preventDefault();sendPromptModal();}
@@ -1503,41 +1345,8 @@ function drawStairs(ctx, el, ppi, sel) {
 }
 
 // Hit-test for stairs: transform click into stair local space, test against rect
-function stairHitTest(el, ix, iy) {
-  const angle = (el.angle || 0) * Math.PI / 180;
-  const scx = el.x + el.width/2, scy = el.y + el.depth/2;
-  let rx = ix, ry = iy;
-  if (angle !== 0) {
-    const cos = Math.cos(-angle), sin = Math.sin(-angle);
-    rx = cos*(ix-scx) - sin*(iy-scy) + scx;
-    ry = sin*(ix-scx) + cos*(iy-scy) + scy;
-  }
-  return rx >= el.x && rx <= el.x + el.width && ry >= el.y && ry <= el.y + el.depth;
-}
 
 // Hit-test for rotated stair corner handles (returns handle name or null)
-function stairHandleHitTest(px, py, el, ppi) {
-  const angle = (el.angle || 0) * Math.PI / 180;
-  const bx = el.x*ppi+plan.panX, by = el.y*ppi+plan.panY;
-  const w = el.width*ppi, d = el.depth*ppi;
-  const cx = bx+w/2, cy = by+d/2;
-  const HIT = isTouchDevice ? 14 : 9;
-  // Corners in local space
-  const handles = [
-    {name:'nw', lx:bx,   ly:by},
-    {name:'ne', lx:bx+w, ly:by},
-    {name:'se', lx:bx+w, ly:by+d},
-    {name:'sw', lx:bx,   ly:by+d}
-  ];
-  for (const h of handles) {
-    // Rotate handle position by angle around center
-    const cos = Math.cos(angle), sin = Math.sin(angle);
-    const rx = cos*(h.lx-cx) - sin*(h.ly-cy) + cx;
-    const ry = sin*(h.lx-cx) + cos*(h.ly-cy) + cy;
-    if (Math.abs(px-rx) < HIT && Math.abs(py-ry) < HIT) return h.name;
-  }
-  return null;
-}
 
 function drawRailing(ctx, el, ppi, sel) {
   const x1=el.startX*ppi+plan.panX, y1=el.startY*ppi+plan.panY;
@@ -3373,98 +3182,8 @@ function buildPlanSummary() {
 }
 
 // Mobile chat bar — always-visible input at bottom of screen on iPad
-async function sendMobileChatBar() {
-  const inp = document.getElementById('mobile-chat-input');
-  if (!inp || isThinking) return;
-  const text = inp.value.trim();
-  if (!text) return;
-  inp.value = '';
-  inp.blur(); // dismiss keyboard after send
-
-  // Pipe through the main chat system — adds to desktop chat history too
-  addChatMsg(text, 'user');
-  chatHistory.push({ role:'user', content: text });
-
-  const localResult = parseCommand(text);
-  if (localResult.success) {
-    addChatMsg(localResult.msg, 'assistant');
-    chatHistory.push({ role:'assistant', content: localResult.msg });
-    // Show a brief toast on mobile confirming action
-    showMobileToast(localResult.msg);
-    return;
-  }
-  if (!localResult.msg.startsWith("I didn't understand")) {
-    addChatMsg(localResult.msg, 'err');
-    showMobileToast(localResult.msg, true);
-    return;
-  }
-
-  // Escalate to AI
-  isThinking = true;
-  showMobileToast('Thinking…');
-  document.getElementById('mobile-chat-input').disabled = true;
-
-  try {
-    const planSummary = buildPlanSummary();
-    const systemPrompt = `You are an AI assistant for a Deck & Patio Planner app. Translate user requests into commands. Current plan: ${planSummary}.
-
-COMMANDS: add deck WxH (ft) | add patio WxH [north/south/east/west] [with rounded NE/NW/SE/SW corner] | add stairs [north/south/east/west] N steps | add railing [north/south/east/west/around] | add posts every N feet | add pergola WxH | add hot tub WxH | add fire pit D | set deck color to COLOR | set deck border color to COLOR | set railing color to COLOR | merge deck segments | remove all TYPE | undo | clear plan
-
-Reply with commands (one per line) then ✓ explanation.`;
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:512,
-        system: systemPrompt, messages: chatHistory.slice(-6) })
-    });
-    const data = await response.json();
-    const reply = data.content?.[0]?.text || '';
-
-    isThinking = false;
-    document.getElementById('mobile-chat-input').disabled = false;
-
-    const lines = reply.trim().split('\n').filter(l=>l.trim());
-    let explanation = '', anySuccess = false;
-    for (const line of lines) {
-      if (line.startsWith('✓')) { explanation = line; continue; }
-      const r = parseCommand(line.trim());
-      if (r.success) anySuccess = true;
-    }
-    const finalMsg = explanation || (anySuccess ? '✓ Done!' : reply);
-    addChatMsg(finalMsg, anySuccess ? 'assistant' : 'err');
-    chatHistory.push({ role:'assistant', content: finalMsg });
-    showMobileToast(finalMsg, !anySuccess);
-
-  } catch(e) {
-    isThinking = false;
-    document.getElementById('mobile-chat-input').disabled = false;
-    addChatMsg("I didn't understand that. Try: \"Add deck 20x16\" or \"help\"", 'err');
-    showMobileToast("Try: \"Add deck 20x16\"", true);
-  }
-}
 
 // Mobile toast notification — brief popup confirming actions
-function showMobileToast(msg, isError=false) {
-  let toast = document.getElementById('mobile-toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'mobile-toast';
-    toast.style.cssText = `
-      position:fixed;top:60px;left:50%;transform:translateX(-50%);
-      background:rgba(0,0,0,0.85);color:#fff;
-      padding:8px 18px;border-radius:20px;font-size:13px;font-weight:500;
-      z-index:200;pointer-events:none;transition:opacity .3s;
-      max-width:80vw;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-      border:1px solid rgba(255,255,255,0.1);
-    `;
-    document.body.appendChild(toast);
-  }
-  toast.textContent = msg.replace('✓ ','');
-  toast.style.borderColor = isError ? 'rgba(248,113,113,0.4)' : 'rgba(79,195,247,0.3)';
-  toast.style.opacity = '1';
-  clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
-}
 
 // Wire Enter key on mobile chat bar
 document.getElementById('mobile-chat-input').addEventListener('keydown', e => {
@@ -3863,148 +3582,9 @@ document.querySelectorAll('.modal-backdrop').forEach(el=>{
 // ============================================================
 let activeMobilePanel = 'canvas';
 
-function showMobilePanel(panel) {
-  activeMobilePanel = panel;
 
-  // Update tab bar active state
-  ['canvas','add','props','chat','save'].forEach(t => {
-    const btn = document.getElementById(`mtab-${t}`);
-    if (btn) btn.classList.toggle('active', t === panel);
-  });
-
-  if (panel === 'canvas') {
-    closeMobileDrawer();
-    return;
-  }
-
-  const drawer = document.getElementById('mobile-drawer');
-  const content = document.getElementById('drawer-content');
-
-  if (panel === 'add') {
-    content.innerHTML = `
-      <div style="padding:12px">
-        <p style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;font-weight:600">Add Elements</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          ${[
-            ['🪵','Deck','deck'],['🔲','Patio','patio'],
-            ['🪜','Stairs','stairs'],['📏','Railing','railing'],
-            ['🏛','Post','post'],['⛩','Pergola','pergola'],
-            ['♨️','Hot Tub','hot-tub'],['🔥','Fire Pit','fire-pit']
-          ].map(([icon,label,type])=>`
-            <button onclick="quickAdd('${type}');closeMobileDrawer()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:14px 8px;font-size:13px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:8px;cursor:pointer">
-              <span style="font-size:20px">${icon}</span>${label}
-            </button>
-          `).join('')}
-        </div>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-          <button class="btn-merge" style="width:100%;padding:10px;font-size:13px;border-radius:8px" onclick="mergeDeckSegments();closeMobileDrawer()">⟁ Merge Deck Segments</button>
-        </div>
-      </div>`;
-  } else if (panel === 'props') {
-    content.innerHTML = '';
-    // Clone props content
-    const propsBody = document.getElementById('props-body');
-    const clone = propsBody.cloneNode(true);
-    clone.id = 'mob-props-body';
-    content.appendChild(clone);
-    // Also show color swatches
-    const colorSection = document.createElement('div');
-    colorSection.style.cssText = 'padding:0 12px 12px';
-    colorSection.innerHTML = `<p style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;font-weight:600">TimberTech Colors</p>`;
-    const swatchWrap = document.createElement('div');
-    swatchWrap.className = 'swatches';
-    TIMBERTECH_DECKING.forEach(c => {
-      const s = document.createElement('div');
-      s.className = 'swatch';
-      s.style.background = c.hex;
-      s.title = c.name;
-      s.onclick = () => { applyColorToSelected(c.hex, c.name); };
-      swatchWrap.appendChild(s);
-    });
-    colorSection.appendChild(swatchWrap);
-    content.appendChild(colorSection);
-  } else if (panel === 'chat') {
-    content.innerHTML = `
-      <div style="display:flex;flex-direction:column;height:40vh">
-        <div id="mob-chat-msgs" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px">
-          <div class="msg assistant">Type what you want to build — I understand plain English!</div>
-        </div>
-        <div style="display:flex;gap:6px;padding:10px;border-top:1px solid var(--border);flex-shrink:0">
-          <input type="text" id="mob-chat-input" placeholder="e.g. Add a 20x16 deck…" style="flex:1;height:36px;font-size:13px" onkeydown="if(event.key==='Enter')sendMobileChat()"/>
-          <button onclick="sendMobileChat()" style="background:var(--primary-dim);color:var(--primary);border:1px solid var(--primary);border-radius:6px;padding:0 14px;font-size:13px;font-weight:500">Send</button>
-        </div>
-      </div>`;
-  }
-
-  openMobileDrawer();
-}
-
-function openMobileDrawer() {
-  const d = document.getElementById('mobile-drawer');
-  d.classList.add('open');
-}
-function closeMobileDrawer() {
-  const d = document.getElementById('mobile-drawer');
-  d.classList.remove('open');
-  // Reset tab bar to canvas
-  ['canvas','add','props','chat','save'].forEach(t => {
-    const btn = document.getElementById(`mtab-${t}`);
-    if (btn) btn.classList.toggle('active', t === 'canvas');
-  });
-  activeMobilePanel = 'canvas';
-}
 
 // Mobile chat (mirrors desktop chat but posts to mobile drawer msgs)
-async function sendMobileChat() {
-  const inp = document.getElementById('mob-chat-input');
-  if (!inp) return;
-  const text = inp.value.trim();
-  if (!text) return;
-  inp.value = '';
-  const msgs = document.getElementById('mob-chat-msgs');
-  const addMsg = (t, role) => {
-    const d = document.createElement('div');
-    d.className = `msg ${role}`; d.textContent = t;
-    msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
-    return d;
-  };
-  addMsg(text, 'user');
-  // Also fire through main chat
-  document.getElementById('chat-input').value = text;
-  // Use main sendChat but capture result
-  const result = parseCommand(text);
-  if (result.success) {
-    addMsg(result.msg, 'assistant');
-    redraw();
-  } else {
-    // Try AI
-    const thinkDiv = addMsg('Thinking…','thinking');
-    try {
-      const planSummary = buildPlanSummary();
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:512,
-          system: `Translate user requests into deck planner commands. Current plan: ${planSummary}. Reply with commands + ✓ explanation.`,
-          messages:[{role:'user',content:text}] })
-      });
-      const data = await resp.json();
-      const reply = data.content?.[0]?.text || '';
-      thinkDiv.remove();
-      const lines = reply.trim().split('\n');
-      let explanation = '', anySuccess = false;
-      for (const line of lines) {
-        if (line.startsWith('✓')) { explanation = line; continue; }
-        const r = parseCommand(line.trim());
-        if (r.success) anySuccess = true;
-      }
-      addMsg(explanation || (anySuccess ? '✓ Done!' : reply), anySuccess ? 'assistant' : 'err');
-      redraw();
-    } catch(e) {
-      thinkDiv.remove();
-      addMsg(result.msg, 'err');
-    }
-  }
-}
 
 // Swipe down to close drawer
 (function() {
@@ -4066,11 +3646,6 @@ function updateSnapInfo() {
   if (el) el.textContent = snapEnabled ? 'ON' : 'OFF';
 }
 const _origToggleSnap = toggleSnap;
-function toggleSnap() {
-  snapEnabled = !snapEnabled;
-  document.getElementById('snap-btn').classList.toggle('active', snapEnabled);
-  updateSnapInfo();
-}
 // Wait for layout then size canvas and draw
 window.addEventListener('load', () => {
   resizeCanvas();
