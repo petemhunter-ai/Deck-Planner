@@ -1388,10 +1388,10 @@ function drawStairs(ctx, el, ppi, sel) {
 
   ctx.restore(); // end rotation
 
-  // Vertex handles at rotated positions
+  // Vertex handles at rotated positions — corners only for stairs
   if (sel) {
-    if (angle) drawVertexHandlesRotated(ctx, el.points, ppi, angle, canvasCx, canvasCy);
-    else drawVertexHandles(ctx, el.points, ppi);
+    if (angle) drawCornerHandlesRotated(ctx, el.points, ppi, angle, canvasCx, canvasCy);
+    else drawCornerHandles(ctx, el.points, ppi);
   }
 }
 
@@ -1431,7 +1431,7 @@ function drawMergedStairs(ctx, el, ppi, sel) {
   ctx.strokeStyle=sel?'#4FC3F7':'rgba(255,255,255,0.35)'; ctx.lineWidth=sel?3:2; ctx.stroke();
 
   drawDeckDimLabels(ctx, pts, ppi);
-  if (sel) drawVertexHandles(ctx, el.outline, ppi);
+  if (sel) drawCornerHandles(ctx, el.outline, ppi);
 }
 
 // Hit-test for stairs: transform click into stair local space, test against rect
@@ -2120,13 +2120,36 @@ function drawVertexHandles(ctx, points, ppi) {
     ctx.fillStyle='#fff'; ctx.fillRect(cx-5,cy-5,10,10);
     ctx.strokeStyle='#4FC3F7'; ctx.lineWidth=1.5; ctx.strokeRect(cx-5,cy-5,10,10);
   });
-  // Midpoint insert handles
+  // Midpoint insert handles (deck only — not stairs)
   for(let i=0;i<points.length;i++){
     const a=points[i], b=points[(i+1)%points.length];
     const mx=(a.x+b.x)/2*ppi+plan.panX, my=(a.y+b.y)/2*ppi+plan.panY;
     ctx.fillStyle='#4FC3F7'; ctx.beginPath(); ctx.arc(mx,my,4,0,Math.PI*2); ctx.fill();
     ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.stroke();
   }
+}
+
+// Corners only — no midpoint insert dots (used for stairs)
+function drawCornerHandles(ctx, points, ppi) {
+  points.forEach(p => {
+    const cx=p.x*ppi+plan.panX, cy=p.y*ppi+plan.panY;
+    ctx.fillStyle='#fff'; ctx.fillRect(cx-5,cy-5,10,10);
+    ctx.strokeStyle='#4FC3F7'; ctx.lineWidth=1.5; ctx.strokeRect(cx-5,cy-5,10,10);
+  });
+}
+
+// Corners only, rotated (used for rotated stairs)
+function drawCornerHandlesRotated(ctx, points, ppi, angle, rcx, rcy) {
+  function rotPt(px, py) {
+    const cos=Math.cos(angle), sin=Math.sin(angle);
+    return { x: cos*(px-rcx)-sin*(py-rcy)+rcx, y: sin*(px-rcx)+cos*(py-rcy)+rcy };
+  }
+  points.forEach(p => {
+    const raw = {x:p.x*ppi+plan.panX, y:p.y*ppi+plan.panY};
+    const r = rotPt(raw.x, raw.y);
+    ctx.fillStyle='#fff'; ctx.fillRect(r.x-5,r.y-5,10,10);
+    ctx.strokeStyle='#4FC3F7'; ctx.lineWidth=1.5; ctx.strokeRect(r.x-5,r.y-5,10,10);
+  });
 }
 
 // Same as above but rotates each point around (rcx,rcy) by angle radians
@@ -2238,10 +2261,13 @@ function hitTestVertex(cx, cy, el, ppi) {
     const vx=pts[i].x*ppi+plan.panX, vy=pts[i].y*ppi+plan.panY;
     if (Math.abs(tcx-vx)<HIT && Math.abs(tcy-vy)<HIT) return {idx:i, isInsert:false};
   }
-  for(let i=0;i<pts.length;i++){
-    const a=pts[i], b=pts[(i+1)%pts.length];
-    const mx=(a.x+b.x)/2*ppi+plan.panX, my=(a.y+b.y)/2*ppi+plan.panY;
-    if (Math.abs(tcx-mx)<HIT && Math.abs(tcy-my)<HIT) return {idx:i, isInsert:true};
+  // Midpoint insert handles — deck/merged-deck only, not stairs
+  if (el.type !== 'stairs' && el.type !== 'merged-stairs') {
+    for(let i=0;i<pts.length;i++){
+      const a=pts[i], b=pts[(i+1)%pts.length];
+      const mx=(a.x+b.x)/2*ppi+plan.panX, my=(a.y+b.y)/2*ppi+plan.panY;
+      if (Math.abs(tcx-mx)<HIT && Math.abs(tcy-my)<HIT) return {idx:i, isInsert:true};
+    }
   }
   return null;
 }
@@ -2750,39 +2776,148 @@ function showMergeBanner(msg){
 // Sutherland-Hodgman based polygon union (works for axis-aligned rects merging)
 // Simple implementation: builds union outline for adjacent/overlapping rectangles
 function polygonUnion(polyList) {
-  // Convert each polygon to {minX,minY,maxX,maxY} for simple rect union
-  // Then create outline from union of rects
-  const rects = polyList.map(pts => ({
-    minX:Math.min(...pts.map(p=>p.x)), minY:Math.min(...pts.map(p=>p.y)),
-    maxX:Math.max(...pts.map(p=>p.x)), maxY:Math.max(...pts.map(p=>p.y))
-  }));
+  if (polyList.length === 0) return null;
+  if (polyList.length === 1) return polyList[0].slice();
 
-  // Check adjacency (within 6 inches)
-  function overlapsOrAdjacent(a, b) {
-    return a.maxX>=b.minX-6&&a.minX<=b.maxX+6&&a.maxY>=b.minY-6&&a.minY<=b.maxY+6;
-  }
-
-  // Build connected groups
-  const used = new Set();
-  const groups = [];
-  for(let i=0;i<rects.length;i++){
-    if(used.has(i)) continue;
-    const grp=[i]; used.add(i);
-    for(let j=0;j<rects.length;j++){
-      if(used.has(j)) continue;
-      if(grp.some(k=>overlapsOrAdjacent(rects[k],rects[j]))){ grp.push(j); used.add(j); j=-1; }
+  // Check all are connected (any pair within 12 inches)
+  function polysAdjacent(a, b) {
+    // Check if any vertex of a is within 12" of any vertex/edge of b
+    for (const pa of a) {
+      for (let i = 0; i < b.length; i++) {
+        const pb1 = b[i], pb2 = b[(i+1)%b.length];
+        // distance from pa to segment pb1-pb2
+        const dx=pb2.x-pb1.x, dy=pb2.y-pb1.y;
+        const len2=dx*dx+dy*dy;
+        if (len2 < 0.001) {
+          if (Math.hypot(pa.x-pb1.x, pa.y-pb1.y) < 12) return true;
+        } else {
+          const t = Math.max(0,Math.min(1,((pa.x-pb1.x)*dx+(pa.y-pb1.y)*dy)/len2));
+          const nx=pb1.x+t*dx, ny=pb1.y+t*dy;
+          if (Math.hypot(pa.x-nx, pa.y-ny) < 12) return true;
+        }
+      }
     }
-    groups.push(grp);
+    return false;
   }
-  if(groups.length>1) return null; // not all connected
 
-  // Compute overall bounding box and collect edge intersections
-  // Use pixel-grid approach: scan rows for union outline
-  const allRects = rects;
-  // Merge into one polygon outline using a simple grid sweep
-  const merged = mergeRectanglesOutline(allRects);
-  return merged;
+  // Build one connected group — if not all connected, fail
+  const used = new Set([0]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 1; i < polyList.length; i++) {
+      if (used.has(i)) continue;
+      for (const j of used) {
+        if (polysAdjacent(polyList[i], polyList[j])) {
+          used.add(i); changed = true; break;
+        }
+      }
+    }
+  }
+  if (used.size < polyList.length) return null; // not all connected
+
+  // Progressive union: merge polygons one at a time
+  let result = polyList[0].map(p=>({x:p.x, y:p.y}));
+  for (let i = 1; i < polyList.length; i++) {
+    result = unionTwoPolygons(result, polyList[i].map(p=>({x:p.x,y:p.y})));
+    if (!result) return null;
+  }
+  return simplifyPolygon(result);
 }
+
+// Segment intersection helper
+function segIntersect(ax,ay,bx,by,cx,cy,dx,dy) {
+  const a1=by-ay, b1=ax-bx, c1=a1*ax+b1*ay;
+  const a2=dy-cy, b2=cx-dx, c2=a2*cx+b2*cy;
+  const det=a1*b2-a2*b1;
+  if (Math.abs(det)<1e-10) return null;
+  const x=(c1*b2-c2*b1)/det, y=(a1*c2-a2*c1)/det;
+  const t1=Math.abs(bx-ax)>Math.abs(by-ay)?(x-ax)/(bx-ax||1e-10):(y-ay)/(by-ay||1e-10);
+  const t2=Math.abs(dx-cx)>Math.abs(dy-cy)?(x-cx)/(dx-cx||1e-10):(y-cy)/(dy-cy||1e-10);
+  if (t1>1e-9&&t1<1-1e-9&&t2>1e-9&&t2<1-1e-9) return {x,y,t1,t2};
+  return null;
+}
+
+function ptInPoly(px,py,pts) {
+  let inside=false;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+    const xi=pts[i].x,yi=pts[i].y,xj=pts[j].x,yj=pts[j].y;
+    if(((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+
+function unionTwoPolygons(subj, clip) {
+  // Insert intersection points into both polygons
+  function insertIntersections(poly1, poly2) {
+    const result = [];
+    for (let i = 0; i < poly1.length; i++) {
+      const a = poly1[i], b = poly1[(i+1)%poly1.length];
+      result.push({...a, inter:false});
+      const hits = [];
+      for (let j = 0; j < poly2.length; j++) {
+        const c = poly2[j], d = poly2[(j+1)%poly2.length];
+        const ix = segIntersect(a.x,a.y,b.x,b.y,c.x,c.y,d.x,d.y);
+        if (ix) hits.push(ix);
+      }
+      hits.sort((a,b)=>a.t1-b.t1);
+      for (const h of hits) result.push({x:h.x,y:h.y,inter:true});
+    }
+    return result;
+  }
+
+  const s = insertIntersections(subj, clip);
+  const c = insertIntersections(clip, subj);
+
+  // If no intersections, check containment
+  const sInters = s.filter(p=>p.inter);
+  if (sInters.length === 0) {
+    if (ptInPoly(subj[0].x, subj[0].y, clip)) return clip; // subj inside clip
+    if (ptInPoly(clip[0].x, clip[0].y, subj)) return subj; // clip inside subj
+    // Check if adjacent (touching) — just concatenate the outlines
+    return null;
+  }
+
+  // Trace the outer union boundary
+  // Start from a vertex of subj that is outside clip
+  let startIdx = s.findIndex(p => !p.inter && !ptInPoly(p.x, p.y, clip));
+  if (startIdx < 0) startIdx = 0;
+
+  const result = [];
+  let onSubj = true;
+  let idx = startIdx;
+  let safety = s.length + c.length + 10;
+
+  const visited = new Set();
+  while (safety-- > 0) {
+    const arr = onSubj ? s : c;
+    const pt = arr[idx % arr.length];
+    const key = `${onSubj?'s':'c'}${idx%arr.length}`;
+    if (visited.has(key) && result.length > 2) break;
+    visited.add(key);
+    result.push({x:pt.x, y:pt.y});
+
+    if (pt.inter) {
+      // Switch to other polygon — find matching intersection
+      onSubj = !onSubj;
+      const other = onSubj ? s : c;
+      const nx = pt.x, ny = pt.y;
+      let best = -1, bestDist = 1;
+      for (let i = 0; i < other.length; i++) {
+        const d = Math.hypot(other[i].x-nx, other[i].y-ny);
+        if (d < bestDist) { bestDist = d; best = i; }
+      }
+      idx = best >= 0 ? best + 1 : idx + 1;
+    } else {
+      idx++;
+    }
+    if (result.length > s.length + c.length + 4) break;
+  }
+
+  return result.length >= 3 ? result : null;
+}
+
+
 
 function mergeRectanglesOutline(rects) {
   // Collect all unique X and Y coordinates
