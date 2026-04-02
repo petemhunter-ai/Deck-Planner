@@ -193,6 +193,7 @@ canvas{display:block;cursor:crosshair}
   #mobile-tabs{display:flex}
   #mobile-drawer{display:flex}
   #mobile-chat-bar{display:flex}
+  #prompt-fab{display:flex !important}
   /* Push canvas up so chat bar + tab bar don't overlap content */
   #main{padding-bottom:104px}
   #toolbar{height:40px;padding:0 6px}
@@ -450,8 +451,44 @@ canvas{display:block;cursor:crosshair}
   </button>
 </div>
 
-<!-- MOBILE SLIDE-UP DRAWER -->
-<div id="mobile-drawer">
+<!-- FLOATING PROMPT BUTTON — always visible on mobile -->
+<button id="prompt-fab" onclick="openPromptModal()" title="Type a command" style="
+  display:none;position:fixed;bottom:112px;right:16px;z-index:80;
+  width:52px;height:52px;border-radius:50%;
+  background:var(--primary);color:#000;
+  border:none;font-size:22px;cursor:pointer;
+  box-shadow:0 4px 16px rgba(79,195,247,0.5);
+  align-items:center;justify-content:center;
+">💬</button>
+
+<!-- PROMPT POPUP MODAL -->
+<div id="prompt-modal" class="modal-backdrop" style="display:none;align-items:flex-end;padding-bottom:0">
+  <div style="background:var(--surface);border-top:2px solid var(--border2);border-radius:16px 16px 0 0;width:100%;padding:20px 16px 32px;box-shadow:0 -8px 32px rgba(0,0,0,0.5)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div class="ai-dot"></div>
+      <span style="font-size:14px;font-weight:600;color:var(--text)">AI Command — Tell me what to build</span>
+      <button onclick="closeModal('prompt-modal')" style="margin-left:auto;color:var(--text3);font-size:18px;cursor:pointer;background:none;border:none">✕</button>
+    </div>
+    <textarea id="prompt-textarea" placeholder="e.g. Add a 20x16 deck with a patio on the south side and railing around the north edge…" style="
+      width:100%;height:90px;border-radius:10px;padding:12px;
+      font-size:16px;resize:none;
+      background:var(--surface2);border:1px solid var(--border2);
+      color:var(--text);font-family:inherit;line-height:1.5;
+    "></textarea>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;margin-bottom:12px">
+      <button class="qbtn" onclick="setPrompt('Add a 20x16 deck')">Add deck</button>
+      <button class="qbtn" onclick="setPrompt('Add patio south with rounded SE corner')">Add patio</button>
+      <button class="qbtn" onclick="setPrompt('Add railing around')">Railing around</button>
+      <button class="qbtn" onclick="setPrompt('Merge deck segments')">Merge deck</button>
+      <button class="qbtn" onclick="setPrompt('help')">Show help</button>
+    </div>
+    <button onclick="sendPromptModal()" style="
+      width:100%;height:46px;border-radius:10px;
+      background:var(--primary);color:#000;
+      border:none;font-size:15px;font-weight:700;cursor:pointer;
+    ">Send ↵</button>
+  </div>
+</div>
   <div id="drawer-handle" onclick="closeMobileDrawer()"></div>
   <div id="drawer-content"></div>
 </div>
@@ -491,15 +528,44 @@ function findColor(name) {
 }
 
 const CC_COLORS = [
-  {name:"Seashell",hex:"#E8E0D5",group:"Natural"},{name:"Weathered Birch",hex:"#C4B89A",group:"Natural"},
-  {name:"Antique Ash",hex:"#7A8C8A",group:"Natural"},{name:"White Oak",hex:"#8C7A65",group:"Natural"},
-  {name:"Rustic Walnut",hex:"#6B4F3A",group:"Natural"},{name:"Antique Mahogany",hex:"#8B3A20",group:"Natural"},
-  {name:"Coastal Gray",hex:"#9A9890",group:"Natural"},{name:"Weatherwood",hex:"#A08C75",group:"Standard"},
-  {name:"Black",hex:"#1A1A1A",group:"Standard"},{name:"White",hex:"#F5F5F0",group:"Standard"},
-  {name:"Nutmeg",hex:"#A0602A",group:"Standard"},{name:"Gray",hex:"#6A6A6A",group:"Standard"},
-  {name:"Patriot Blue",hex:"#1C3A6B",group:"Standard"},{name:"Sea Glass",hex:"#8DB5A0",group:"Coastal"},
-  {name:"Laurel Green",hex:"#4A7A5A",group:"Coastal"},{name:"Lake Blue",hex:"#2A6A9A",group:"Coastal"},
-  {name:"Ocean Blue",hex:"#1A5FA0",group:"Tropical"},{name:"Turquoise",hex:"#00A0A0",group:"Tropical"}
+  // Natural Finishes (from 2025 catalog pg.50)
+  {name:"Weathered Birch",hex:"#C4B89A",group:"Natural Finishes"},
+  {name:"Antique Ash",hex:"#7A8C8A",group:"Natural Finishes"},
+  {name:"White Oak",hex:"#8C7A65",group:"Natural Finishes"},
+  {name:"Rustic Walnut",hex:"#6B4F3A",group:"Natural Finishes"},
+  {name:"Brazilian Walnut",hex:"#5C3820",group:"Natural Finishes"},
+  {name:"Antique Mahogany",hex:"#8B3A20",group:"Natural Finishes"},
+  {name:"Coastal Gray",hex:"#9A9890",group:"Natural Finishes"},
+  // Standard Colors (poly lumber)
+  {name:"Seashell",hex:"#E8E0D5",group:"Standard Colors"},
+  {name:"Weatherwood",hex:"#A08C75",group:"Standard Colors"},
+  {name:"Black",hex:"#1A1A1A",group:"Standard Colors"},
+  {name:"White",hex:"#F5F5F0",group:"Standard Colors"},
+  {name:"Brown",hex:"#4A2E1A",group:"Standard Colors"},
+  {name:"Nutmeg",hex:"#A0602A",group:"Standard Colors"},
+  {name:"Gray",hex:"#6A6A6A",group:"Standard Colors"},
+  {name:"Dove Gray",hex:"#A8A8A8",group:"Standard Colors"},
+  {name:"Patriot Blue",hex:"#1C3A6B",group:"Standard Colors"},
+  // Coastal Colors
+  {name:"Sea Glass",hex:"#8DB5A0",group:"Coastal Colors"},
+  {name:"Laurel Green",hex:"#4A7A5A",group:"Coastal Colors"},
+  {name:"Ice Blue",hex:"#A8C8DC",group:"Coastal Colors"},
+  {name:"Blue Slate",hex:"#5A7A9A",group:"Coastal Colors"},
+  {name:"Lake Blue",hex:"#2A6A9A",group:"Coastal Colors"},
+  // Tropical Colors
+  {name:"Ocean Blue",hex:"#1A5FA0",group:"Tropical Colors"},
+  {name:"Lime Green",hex:"#7AB826",group:"Tropical Colors"},
+  {name:"Orange",hex:"#E05A10",group:"Tropical Colors"},
+  {name:"Yellow",hex:"#F0C020",group:"Tropical Colors"},
+  {name:"Turquoise",hex:"#00A0A0",group:"Tropical Colors"},
+  {name:"Royal Blue",hex:"#1A3A90",group:"Tropical Colors"},
+  // Marine Grade (Aquatic & Serenity collections only)
+  {name:"Patriot Blue (Marine)",hex:"#0A2A5A",group:"Marine Grade"},
+  {name:"Black (Marine)",hex:"#0A0A0A",group:"Marine Grade"},
+  {name:"Dove Gray (Marine)",hex:"#9A9A98",group:"Marine Grade"},
+  {name:"White (Marine)",hex:"#F8F8F5",group:"Marine Grade"},
+  {name:"Gray (Marine)",hex:"#585858",group:"Marine Grade"},
+  {name:"Weatherwood (Marine)",hex:"#968070",group:"Marine Grade"}
 ];
 const NC_COLORS = [
   {name:"Aspen",hex:"#C8B890"},{name:"Charcoal",hex:"#4A4A4A"},{name:"Husk",hex:"#B89860"},
@@ -548,109 +614,185 @@ const NC_CUSHIONS = SUNBRELLA_CUSHIONS;
 const CC_CUSHIONS = SUNBRELLA_CUSHIONS;
 
 const CC_CATALOG = [
-  {name:"Aquatic Collection",products:[
+  {name:"Aquatic Collection",colors:["Marine Grade"],products:[
     {name:"Aquatic Sofa (#1001)",width:77,depth:33.5,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
     {name:"Aquatic Love Seat (#1002)",width:54,depth:33.5,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
     {name:"Aquatic Club Chair (#1003)",width:30,depth:33.5,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
+    {name:"Aquatic Ottoman (#1012)",width:29,depth:29,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
     {name:"Aquatic End Table (#1004)",width:22,depth:24,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
     {name:"Aquatic Cocktail Table (#1013)",width:22,depth:42,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
-    {name:"Aquatic Pub Chair Counter (#1006C)",width:27,depth:27,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
-    {name:"Aquatic Pub Chair Pub (#1007P)",width:27,depth:27,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
-    {name:"Aquatic 40 Table 40x60 (#1008)",width:40,depth:60,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
-    {name:"Aquatic 40 Table 40x72 (#1009)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
-    {name:"Aquatic 40 Table 40x84 (#1010)",width:40,depth:84,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
-    {name:"Aquatic 40 Table 40x96 (#1011)",width:40,depth:96,url:"https://www.casualcomfortusa.com/collections/aquatic/"}
+    {name:"Aquatic Dining Chair (#1005D)",width:27,depth:23,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
+    {name:"Aquatic Counter Chair (#1006C)",width:27,depth:23,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
+    {name:"Aquatic Pub Chair (#1007P)",width:27,depth:23,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
+    {name:"Aquatic 40\"x60\" Dining Table (#1008-4060D)",width:40,depth:60,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
+    {name:"Aquatic 40\"x72\" Dining Table (#1009-4072D)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
+    {name:"Aquatic 40\"x84\" Dining Table (#1010-4084D)",width:40,depth:84,url:"https://www.casualcomfortusa.com/collections/aquatic/"},
+    {name:"Aquatic 40\"x96\" Dining Table (#1011-4096D)",width:40,depth:96,url:"https://www.casualcomfortusa.com/collections/aquatic/"}
   ]},
-  {name:"Sectional Components",products:[
-    {name:"Armless Chair Section",width:30,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
-    {name:"Left Arm Section",width:34,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
-    {name:"Right Arm Section",width:34,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
-    {name:"Corner Section",width:33,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
-    {name:"Ottoman / Chaise Extension",width:30,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
-    {name:"Wedge Section",width:33,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
-    {name:"3-Piece Sectional (LAF/Corner/RAF)",width:101,depth:33,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
-    {name:"4-Piece Sectional w/Ottoman",width:101,depth:66,url:"https://www.casualcomfortusa.com/collections/sectionals/"},
-    {name:"5-Piece Sectional L-Shape",width:130,depth:66,url:"https://www.casualcomfortusa.com/collections/sectionals/"}
+  {name:"Serenity Collection",colors:["Marine Grade"],products:[
+    {name:"Serenity Adirondack Chair (#2001)",width:28,depth:32,url:"https://www.casualcomfortusa.com/collections/serenity/"},
+    {name:"Serenity Dining Chair (#2002D)",width:24,depth:30,url:"https://www.casualcomfortusa.com/collections/serenity/"},
+    {name:"Serenity Counter Chair (#2003C)",width:24,depth:30,url:"https://www.casualcomfortusa.com/collections/serenity/"},
+    {name:"Serenity Pub Chair (#2004P)",width:24,depth:30,url:"https://www.casualcomfortusa.com/collections/serenity/"}
   ]},
-  {name:"Bars, Buffets & Fire Pits",products:[
-    {name:"Round Fire Pit 46\" (#46FP-CONV)",width:46,depth:46,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"4' Rectangular Fire Pit (#6531CONV)",width:34,depth:48,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"6' Rectangular Fire Table (#6533)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"Simplicity Fire Pit 4' Conv (#920-4CONV)",width:36,depth:48,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"Simplicity Fire Pit 5' Conv (#920-5CONV)",width:36,depth:60,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"4' Conversation Surfboard Table",width:20,depth:48,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"5' Surfboard Table (#3001-5D)",width:20,depth:60,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"6' Surfboard Table (#3001-6D)",width:20,depth:72,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"7' Surfboard Table (#3001-7D)",width:20,depth:84,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"Barstool Dining (#6645-D)",width:16,depth:16,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"Barstool Counter (#6645-C)",width:16,depth:16,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"Barstool Pub (#6645-P)",width:16,depth:16,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"Saddle Stool w/Back Dining (#6646B-D)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"Saddle Stool w/Back Counter (#6646B-C)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"Saddle Stool w/Back Pub (#6646B-P)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"},
-    {name:"Saddle Stool Dining (#6646-D)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets-fire-pits/"}
+  {name:"Simplicity Collection",products:[
+    {name:"Simplicity Adirondack (#901)",width:28,depth:31,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Dining Chair (#902D)",width:25,depth:26.5,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Counter Chair (#903C)",width:25,depth:26,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Pub Chair (#904P)",width:25,depth:26,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Club Chair (#905)",width:28.5,depth:34,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Love Seat (#906)",width:53,depth:34,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Sofa (#907)",width:77,depth:34,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Sectional Corner Piece (#900)",width:57,depth:43,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Left Arm Club Chair (#905-L)",width:26,depth:34,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Right Arm Club Chair (#905-R)",width:26,depth:34,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Left Arm Love Seat (#906-L)",width:51,depth:34,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Right Arm Love Seat (#906-R)",width:51,depth:34,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Center Piece (#900)",width:26,depth:34,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Single Glider (#921)",width:30,depth:29,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Counter Glider (#921-C)",width:30,depth:38,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity 4ft Glider (#923)",width:53,depth:29,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity 5ft Glider (#924)",width:65,depth:29,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Adirondack Settee (#922)",width:72,depth:34,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Cocktail Table (#915)",width:22,depth:22,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Round End Table (#916-R)",width:22,depth:22,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity Square End Table (#916-S)",width:22,depth:22,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity 40\"x60\" Table (#914-4060D)",width:40,depth:60,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity 40\"x72\" Table (#913-4072D)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity 40\"x84\" Table (#912-4084D)",width:40,depth:84,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity 40\"x96\" Table (#911-4096D)",width:40,depth:96,url:"https://www.casualcomfortusa.com/collections/simplicity/"},
+    {name:"Simplicity 40\"x120\" Table (#910-40120D)",width:40,depth:120,url:"https://www.casualcomfortusa.com/collections/simplicity/"}
   ]},
-  {name:"Chaises & Lounges",products:[
-    {name:"Double Chaise Lounge",width:86,depth:60,url:"https://www.casualcomfortusa.com/collections/chaises/"},
-    {name:"Single Chaise Lounge",width:26,depth:80,url:"https://www.casualcomfortusa.com/collections/chaises/"},
-    {name:"Adirondack Chair",width:30,depth:34,url:"https://www.casualcomfortusa.com/collections/adirondack-chairs/"},
-    {name:"Adirondack Ottoman",width:21,depth:18,url:"https://www.casualcomfortusa.com/collections/adirondack-chairs/"},
-    {name:"Adirondack Side Table",width:18,depth:18,url:"https://www.casualcomfortusa.com/collections/adirondack-chairs/"}
-  ]},
-  {name:"Dining",products:[
-    {name:"30\" Round Dining Table",width:30,depth:30,url:"https://www.casualcomfortusa.com/collections/dining/"},
-    {name:"48\" Round Dining Table",width:48,depth:48,url:"https://www.casualcomfortusa.com/collections/dining/"},
-    {name:"60\" Round Dining Table",width:60,depth:60,url:"https://www.casualcomfortusa.com/collections/dining/"},
-    {name:"60\"x36\" Rect Dining Table",width:60,depth:36,url:"https://www.casualcomfortusa.com/collections/dining/"},
-    {name:"72\"x36\" Rect Dining Table",width:72,depth:36,url:"https://www.casualcomfortusa.com/collections/dining/"},
-    {name:"72\"x42\" Rect Dining Table",width:72,depth:42,url:"https://www.casualcomfortusa.com/collections/dining/"},
-    {name:"84\"x42\" Rect Dining Table",width:84,depth:42,url:"https://www.casualcomfortusa.com/collections/dining/"},
-    {name:"96\"x42\" Rect Dining Table",width:96,depth:42,url:"https://www.casualcomfortusa.com/collections/dining/"},
-    {name:"Dining Chair",width:22,depth:24,url:"https://www.casualcomfortusa.com/collections/dining/"},
-    {name:"Dining Arm Chair",width:24,depth:24,url:"https://www.casualcomfortusa.com/collections/dining/"}
-  ]},
-  {name:"Deep Seating",products:[
-    {name:"Deep Seating Sofa",width:82,depth:38,url:"https://www.casualcomfortusa.com/collections/deep-seating/"},
-    {name:"Deep Seating Love Seat",width:58,depth:38,url:"https://www.casualcomfortusa.com/collections/deep-seating/"},
-    {name:"Deep Seating Club Chair",width:34,depth:38,url:"https://www.casualcomfortusa.com/collections/deep-seating/"},
-    {name:"Deep Seating Ottoman",width:34,depth:26,url:"https://www.casualcomfortusa.com/collections/deep-seating/"},
-    {name:"Deep Seating Cocktail Table",width:48,depth:26,url:"https://www.casualcomfortusa.com/collections/deep-seating/"},
-    {name:"Deep Seating End Table",width:22,depth:22,url:"https://www.casualcomfortusa.com/collections/deep-seating/"}
+  {name:"Marina Collection",products:[
+    {name:"Marina Dining Chair (#8010)",width:25,depth:26,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Swivel Dining Chair (#8012)",width:25,depth:25,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Counter Chair (#8014)",width:25,depth:26,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Swivel Counter Chair (#8016)",width:25,depth:26,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Pub Chair (#8018)",width:25,depth:26,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Swivel Pub Chair (#8015)",width:25,depth:26,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Chat Chair (#8011)",width:31,depth:38,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Rocker (#8046)",width:27,depth:32,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Club Chair (#8022)",width:30.5,depth:36,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Love Seat (#8023)",width:53.5,depth:36,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Sofa (#8024)",width:76.5,depth:36,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Swivel Rocker (#8025)",width:30.5,depth:36,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Sectional Corner Piece (#8021)",width:62,depth:40,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Left Arm Club Chair (#8022-L)",width:27,depth:36,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Right Arm Club Chair (#8022-R)",width:27,depth:36,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Left Arm Love Seat (#8023-L)",width:50,depth:36,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Right Arm Love Seat (#8023-R)",width:50,depth:36,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Ottoman (#8026)",width:23.5,depth:29,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina End Table (#8030)",width:22,depth:24,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Cocktail Table (#8035)",width:22,depth:22,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Conversation Table 42\" (#8002-42SCONV)",width:42,depth:42,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Dining Table 42\" Square (#8004-42SDIN)",width:42,depth:42,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina 40\"x60\" Table (#8006-4060D)",width:40,depth:60,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina 40\"x72\" Table (#8006-4072D)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina 40\"x84\" Table (#8006-4084D)",width:40,depth:84,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina 40\"x96\" Table (#8006-4096D)",width:40,depth:96,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Bed Swing (#8045)",width:91,depth:38,url:"https://www.casualcomfortusa.com/collections/marina/"},
+    {name:"Marina Love Seat Swing (#8047)",width:56,depth:36,url:"https://www.casualcomfortusa.com/collections/marina/"}
   ]},
   {name:"Bayshore Collection",products:[
-    {name:"Bayshore Sofa",width:82,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Love Seat",width:58,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Club Chair",width:34,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Ottoman",width:34,depth:26,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Corner Section",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Armless Section",width:28,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Left Arm Section",width:34,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Right Arm Section",width:34,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Chaise Section",width:34,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Cocktail Table",width:48,depth:26,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore End Table",width:22,depth:22,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
-    {name:"Bayshore Coffee Table",width:50,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"}
+    {name:"Bayshore Club Chair (#6501)",width:31,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Love Seat (#6502)",width:54,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Sofa (#6503)",width:78,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Swivel Rocker (#6507)",width:31,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Ottoman (#6508)",width:23,depth:26.5,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Chaise Lounge (#6509)",width:25,depth:79,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Sectional Corner Piece (#6500)",width:60,depth:41,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Left Arm Club Chair (#6501-L)",width:27.5,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Right Arm Club Chair (#6501-R)",width:27.5,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Left Arm Love Seat (#6502-L)",width:50.5,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Right Arm Love Seat (#6502-R)",width:50.5,depth:35,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Dining Chair (#6511)",width:20,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Dining Chair w/Arms (#6511A)",width:26,depth:26,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Swivel Dining Chair (#6517)",width:23.5,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Swivel Dining Chair w/Arms (#6517A)",width:26,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Counter Chair (#6510C)",width:20,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Counter Chair w/Arms (#6510CA)",width:26,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Pub Chair (#6510)",width:20,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Pub Chair w/Arms (#6510A)",width:26,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 4ft Dining Bench (#6512-4)",width:48,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 5ft Dining Bench (#6512-5)",width:60,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 6ft Dining Bench (#6512-6)",width:72,depth:25,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Sling Dining Chair (#6513)",width:22,depth:24,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Sling Dining Chair w/Arms (#6513A)",width:24,depth:24,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 28\" Table Dining (#3028)",width:28,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 36\" Table Dining (#3036)",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 48\" Table Dining (#3048)",width:48,depth:48,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore 60\" Table Dining (#3060)",width:60,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore End Table (#6520)",width:22,depth:24,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Cocktail Table (#6529)",width:22,depth:41,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Conversation Table 36\" (#2136)",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Conversation Table 42\" (#2142)",width:42,depth:42,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Conversation Table 48\" (#2148)",width:48,depth:48,url:"https://www.casualcomfortusa.com/collections/bayshore/"}
+  ]},
+  {name:"Wavz Collection",products:[
+    {name:"Wavz Club Chair",width:31,depth:34,url:"https://www.casualcomfortusa.com/collections/wavz/"},
+    {name:"Wavz Love Seat",width:54,depth:34,url:"https://www.casualcomfortusa.com/collections/wavz/"},
+    {name:"Wavz Sofa",width:77,depth:34,url:"https://www.casualcomfortusa.com/collections/wavz/"},
+    {name:"Wavz Swivel Rocker",width:31,depth:34,url:"https://www.casualcomfortusa.com/collections/wavz/"},
+    {name:"Wavz Ottoman",width:24,depth:28,url:"https://www.casualcomfortusa.com/collections/wavz/"},
+    {name:"Wavz Sectional Corner Piece",width:58,depth:42,url:"https://www.casualcomfortusa.com/collections/wavz/"},
+    {name:"Wavz Left Arm Club Chair",width:28,depth:34,url:"https://www.casualcomfortusa.com/collections/wavz/"},
+    {name:"Wavz Right Arm Club Chair",width:28,depth:34,url:"https://www.casualcomfortusa.com/collections/wavz/"},
+    {name:"Wavz End Table",width:22,depth:22,url:"https://www.casualcomfortusa.com/collections/wavz/"},
+    {name:"Wavz Coffee Table",width:44,depth:24,url:"https://www.casualcomfortusa.com/collections/wavz/"}
+  ]},
+  {name:"Bridgeport Collection",products:[
+    {name:"Bridgeport Glider 4ft (#117)",width:53,depth:28,url:"https://www.casualcomfortusa.com/collections/bridgeport/"},
+    {name:"Bridgeport Glider 5ft (#118)",width:65,depth:28,url:"https://www.casualcomfortusa.com/collections/bridgeport/"},
+    {name:"Bridgeport Single Glider (#116)",width:30,depth:28,url:"https://www.casualcomfortusa.com/collections/bridgeport/"},
+    {name:"Bridgeport Swing 4ft (#115)",width:53,depth:26,url:"https://www.casualcomfortusa.com/collections/bridgeport/"},
+    {name:"Bridgeport Swing 5ft (#116S)",width:65,depth:26,url:"https://www.casualcomfortusa.com/collections/bridgeport/"}
   ]},
   {name:"Oceanside Collection",products:[
-    {name:"Oceanside Sofa",width:84,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside Love Seat",width:60,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside Club Chair",width:36,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside Ottoman",width:36,depth:28,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside Corner Section",width:38,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside Armless Section",width:30,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside Left Arm Section",width:36,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside Right Arm Section",width:36,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside Chaise Lounge",width:36,depth:64,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside Cocktail Table",width:50,depth:28,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside End Table",width:24,depth:24,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside 3-Pc Sectional",width:108,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
-    {name:"Oceanside 4-Pc Sectional w/Chaise",width:108,depth:76,url:"https://www.casualcomfortusa.com/collections/oceanside/"}
+    {name:"Oceanside Adirondack (#151)",width:30,depth:36,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Folding Adirondack (#150)",width:30,depth:36,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Fan Back Chair (#152)",width:27,depth:29,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Rocker (#153)",width:27,depth:33,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Swivel Rocker (#154)",width:27,depth:29,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Chaise Lounge (#155)",width:25,depth:78,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Double Chaise (#156)",width:55,depth:78,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Ottoman (#164)",width:24,depth:20,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Dining Chair (#157)",width:23,depth:24,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Counter Chair (#158)",width:23,depth:24,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Pub Chair (#159)",width:23,depth:24,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Dining Chair w/Arms (#157A)",width:26,depth:25,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Accent Table (#405)",width:14,depth:14,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 28\" Round Table (#160-28)",width:28,depth:28,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 36\" Round Table (#160-36)",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 48\" Round Table (#160-48)",width:48,depth:48,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 60\" Round Table (#160-60)",width:60,depth:60,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 30\"x48\" Rect Table (#162-3048)",width:30,depth:48,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 30\"x60\" Rect Table (#162-3060)",width:30,depth:60,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 30\"x72\" Rect Table (#162-3072)",width:30,depth:72,url:"https://www.casualcomfortusa.com/collections/oceanside/"}
   ]},
-  {name:"Swivel & Glider",products:[
-    {name:"Swivel Glider Chair",width:32,depth:34,url:"https://www.casualcomfortusa.com/collections/swivel/"},
-    {name:"Swivel Rocker Chair",width:32,depth:34,url:"https://www.casualcomfortusa.com/collections/swivel/"},
-    {name:"Chat Chair",width:28,depth:30,url:"https://www.casualcomfortusa.com/collections/swivel/"},
-    {name:"Chat Table Round 36\"",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/swivel/"}
+  {name:"Fire Pit Collection",products:[
+    {name:"Simplicity Fire Pit 4ft Conv (#920-4CONV)",width:36,depth:48,url:"https://www.casualcomfortusa.com/collections/fire-pit/"},
+    {name:"Simplicity Fire Pit 5ft Conv (#920-5CONV)",width:36,depth:60,url:"https://www.casualcomfortusa.com/collections/fire-pit/"},
+    {name:"Round Fire Pit 46\" Conv (#46FP-CONV)",width:46,depth:46,url:"https://www.casualcomfortusa.com/collections/fire-pit/"},
+    {name:"Round Fire Pit 46\" Dining (#46FP-DIN)",width:46,depth:46,url:"https://www.casualcomfortusa.com/collections/fire-pit/"},
+    {name:"4ft Rectangular Fire Pit (#6531CONV)",width:34,depth:48,url:"https://www.casualcomfortusa.com/collections/fire-pit/"},
+    {name:"6ft Rectangular Fire Table (#6533)",width:40,depth:72,url:"https://www.casualcomfortusa.com/collections/fire-pit/"},
+    {name:"Square Fire Table 42\" (#FT-42S)",width:42,depth:42,url:"https://www.casualcomfortusa.com/collections/fire-pit/"}
+  ]},
+  {name:"Surfboard Collection",products:[
+    {name:"4ft Conversation Surfboard Table",width:20,depth:48,url:"https://www.casualcomfortusa.com/collections/surfboard/"},
+    {name:"5ft Surfboard Table Dining (#3001-5D)",width:20,depth:60,url:"https://www.casualcomfortusa.com/collections/surfboard/"},
+    {name:"6ft Surfboard Table Dining (#3001-6D)",width:20,depth:72,url:"https://www.casualcomfortusa.com/collections/surfboard/"},
+    {name:"7ft Surfboard Table Dining (#3001-7D)",width:20,depth:84,url:"https://www.casualcomfortusa.com/collections/surfboard/"},
+    {name:"8ft Surfboard Table Dining (#3001-8D)",width:20,depth:96,url:"https://www.casualcomfortusa.com/collections/surfboard/"}
+  ]},
+  {name:"Bars & Buffets",products:[
+    {name:"Barstool Dining (#6645-D)",width:16,depth:16,url:"https://www.casualcomfortusa.com/collections/bars-buffets/"},
+    {name:"Barstool Counter (#6645-C)",width:16,depth:16,url:"https://www.casualcomfortusa.com/collections/bars-buffets/"},
+    {name:"Barstool Pub (#6645-P)",width:16,depth:16,url:"https://www.casualcomfortusa.com/collections/bars-buffets/"},
+    {name:"Saddle Stool Dining (#6646-D)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets/"},
+    {name:"Saddle Stool w/Back Dining (#6646B-D)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets/"},
+    {name:"Saddle Stool w/Back Counter (#6646B-C)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets/"},
+    {name:"Saddle Stool w/Back Pub (#6646B-P)",width:20,depth:20,url:"https://www.casualcomfortusa.com/collections/bars-buffets/"}
   ]}
 ];
 
@@ -666,31 +808,68 @@ const NC_CATALOG = [
     {name:"6510 Rotating Chat Table",width:36,depth:36,url:"https://www.northcape.com/product/6510-rotating-chat-table/"}
   ]},
   {name:"6510 Sectional Components",products:[
-    {name:"6510 Corner Section",width:31,depth:31,url:"https://www.northcape.com/product-category/6510/"},
-    {name:"6510 Armless Section",width:27,depth:29,url:"https://www.northcape.com/product-category/6510/"},
+    {name:"6510 Corner Section (90°)",width:31,depth:31,url:"https://www.northcape.com/product-category/6510/"},
+    {name:"6510 Armless Middle Section",width:27,depth:29,url:"https://www.northcape.com/product-category/6510/"},
     {name:"6510 Left Arm Section",width:31,depth:29,url:"https://www.northcape.com/product-category/6510/"},
     {name:"6510 Right Arm Section",width:31,depth:29,url:"https://www.northcape.com/product-category/6510/"},
-    {name:"6510 Chaise Section",width:31,depth:58,url:"https://www.northcape.com/product-category/6510/"},
-    {name:"6510 3-Pc Sectional (L/Corner/R)",width:89,depth:29,url:"https://www.northcape.com/product-category/6510/"},
-    {name:"6510 4-Pc Sectional w/Chaise",width:89,depth:58,url:"https://www.northcape.com/product-category/6510/"}
+    {name:"6510 Chaise Section",width:31,depth:58,url:"https://www.northcape.com/product-category/6510/"}
   ]},
-  {name:"Bainbridge Woven",products:[
+  {name:"Bainbridge Woven (275)",products:[
     {name:"Bainbridge 3 Seat Sofa",width:81,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
-    {name:"Bainbridge 2 Seat Sofa",width:55,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge 2 Seat Sofa / Loveseat",width:55,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
     {name:"Bainbridge Lounge Chair",width:33,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Swivel Rocker",width:33,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
     {name:"Bainbridge Ottoman",width:30,depth:30,url:"https://www.northcape.com/product-category/bainbridge/"},
-    {name:"Bainbridge Coffee Table",width:47,depth:24,url:"https://www.northcape.com/product-category/bainbridge/"},
-    {name:"Bainbridge End Table",width:22,depth:22,url:"https://www.northcape.com/product-category/bainbridge/"},
-    {name:"Bainbridge Corner Section",width:33,depth:33,url:"https://www.northcape.com/product-category/bainbridge/"},
-    {name:"Bainbridge Armless Section",width:27,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Rectangular Coffee Table",width:47,depth:24,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Square End Table",width:22,depth:22,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Corner End Table",width:27,depth:27,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Sectional Corner (90°)",width:33,depth:33,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Sectional Armless Middle",width:27,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Sectional Left Arm",width:33,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
+    {name:"Bainbridge Sectional Right Arm",width:33,depth:32.5,url:"https://www.northcape.com/product-category/bainbridge/"},
     {name:"Bainbridge Chaise Section",width:33,depth:60,url:"https://www.northcape.com/product-category/bainbridge/"}
+  ]},
+  {name:"Lakeside Collection (4302)",products:[
+    // Exact dims from northcape.com product pages
+    {name:"Lakeside 3 Seat Sofa (NC4302-3S)",width:81,depth:32.5,url:"https://www.northcape.com/product/lakeside-3-seat-sofa/"},
+    {name:"Lakeside Loveseat (NC4302LS)",width:56,depth:32.5,url:"https://www.northcape.com/product/lakeside-loveseat/"},
+    {name:"Lakeside Club Chair (NC4302C)",width:31,depth:32.5,url:"https://www.northcape.com/product/lakeside-club-chair/"},
+    {name:"Lakeside Swivel Glider (NC4302SG)",width:31,depth:32.5,url:"https://www.northcape.com/product/lakeside-swivel-glider/"},
+    {name:"Lakeside Rectangular Ottoman (NC4302O-R)",width:43.3,depth:27.6,url:"https://www.northcape.com/product/lakeside-rectangular-ottoman/"},
+    {name:"Lakeside Square Ottoman (NC4302O-S)",width:27,depth:27,url:"https://www.northcape.com/product/lakeside-square-ottoman/"},
+    {name:"Lakeside Rectangular Coffee Table (NC4302CT-R)",width:47,depth:24,url:"https://www.northcape.com/product/lakeside-rectangular-coffee-table/"},
+    {name:"Lakeside Square Coffee Table (NC4302CT-S)",width:24,depth:24,url:"https://www.northcape.com/product/lakeside-square-coffee-table/"},
+    {name:"Lakeside Square End Table (NC4302ET)",width:22,depth:22,url:"https://www.northcape.com/product/lakeside-square-end-table/"},
+    {name:"Lakeside Corner End Table (NC4302CET)",width:27,depth:27,url:"https://www.northcape.com/product/lakeside-corner-end-table/"},
+    {name:"Lakeside Sectional 90° Corner (NC4302SCC)",width:32.5,depth:32.5,url:"https://www.northcape.com/product/lakeside-sectional-90-degree-sectional-corner/"},
+    {name:"Lakeside Sectional 45° Corner (NC4302-45)",width:32.5,depth:32.5,url:"https://www.northcape.com/product/lakeside-sectional-45-degree-sectional-corner/"},
+    {name:"Lakeside Sectional Middle Chair (NC4302SCM)",width:25,depth:32.5,url:"https://www.northcape.com/product/lakeside-sectional-sectional-middle/"},
+    {name:"Lakeside Sectional Left Arm Loveseat (NC4302LL)",width:53,depth:32.5,url:"https://www.northcape.com/product/lakeside-sectional-left-arm-loveseat/"},
+    {name:"Lakeside Sectional Right Arm Loveseat (NC4302RL)",width:53,depth:32.5,url:"https://www.northcape.com/product/lakeside-sectional-right-arm-loveseat/"}
+  ]},
+  {name:"Edgewater Collection (6518)",products:[
+    // Exact dims from northcape.com — scaled-for-small-spaces collection
+    {name:"Edgewater 3 Seater Sofa (NC65183S)",width:74,depth:29,url:"https://www.northcape.com/product/edgewater-3-seater-sofa/"},
+    {name:"Edgewater Loveseat (NC6518LS)",width:52,depth:29,url:"https://www.northcape.com/product/edgewater-loveseat/"},
+    {name:"Edgewater Lounge Chair (NC6518C)",width:30,depth:29,url:"https://www.northcape.com/product/edgewater-lounge-chair/"},
+    {name:"Edgewater Swivel Rocker (NC6518SR)",width:30,depth:29,url:"https://www.northcape.com/product/edgewater-swivel-rocker/"},
+    {name:"Edgewater Rectangular Ottoman (NC6518O-REC)",width:44,depth:24,url:"https://www.northcape.com/product/edgewater-rectangular-ottoman/"},
+    {name:"Edgewater Rectangular Coffee Table (NC6518CT-REC)",width:44,depth:24,url:"https://www.northcape.com/product/edgewater-rectangular-coffee-table/"},
+    {name:"Edgewater Square End Table (NC6518ET-SQ)",width:20,depth:20,url:"https://www.northcape.com/product/edgewater-square-end-table/"},
+    {name:"Edgewater Rotating Chat Table (NC6518R-CHT)",width:36,depth:36,url:"https://www.northcape.com/product/edgewater-rotating-chat-table/"}
+  ]},
+  {name:"Grand Stafford (4331)",products:[
+    {name:"Grand Stafford Sofa",width:78.5,depth:36.5,url:"https://www.northcape.com/product-category/grand-stafford/"},
+    {name:"Grand Stafford Loveseat",width:54.5,depth:36.5,url:"https://www.northcape.com/product-category/grand-stafford/"},
+    {name:"Grand Stafford Swivel Glider",width:30.5,depth:36.5,url:"https://www.northcape.com/product-category/grand-stafford/"},
+    {name:"Grand Stafford End Table",width:22,depth:22,url:"https://www.northcape.com/product-category/grand-stafford/"},
+    {name:"Grand Stafford Coffee Table",width:44,depth:28,url:"https://www.northcape.com/product-category/grand-stafford/"}
   ]},
   {name:"Aluminum / Sling",products:[
     {name:"Rio Chaise Lounge",width:84,depth:29,url:"https://www.northcape.com/product/rio-chaise-lounge/"},
     {name:"Rio 48\" Round Dining Table",width:48,depth:48,url:"https://www.northcape.com/product/rio-48-dining-table/"},
     {name:"Rio 60\" Round Dining Table",width:60,depth:60,url:"https://www.northcape.com/product/rio-60-dining-table/"},
     {name:"Rio Dining Chair",width:24,depth:27,url:"https://www.northcape.com/product/rio-dining-chair/"},
-    {name:"Rio Arm Chair",width:26,depth:27,url:"https://www.northcape.com/product/rio-dining-chair/"},
     {name:"Capri Chaise Lounge",width:26,depth:74,url:"https://www.northcape.com/product/capri-chaise-lounge/"},
     {name:"Capri 30\" Round Dining Table",width:30,depth:30,url:"https://www.northcape.com/product/capri-30-round-dining-table/"},
     {name:"Capri 48\" Round Dining Table",width:48,depth:48,url:"https://www.northcape.com/product/capri-48-round-dining-table/"},
@@ -700,40 +879,9 @@ const NC_CATALOG = [
     {name:"Overton 82\"x42\" Dining Table",width:82,depth:42,url:"https://www.northcape.com/product/overton-82x-42-dining-table-w-textured-alum-wood-look-finish/"},
     {name:"Overton 55\"x40\" Dining Table",width:55,depth:40,url:"https://www.northcape.com/product/overton-55-x-40-dining-table/"},
     {name:"Overton Padded Dining Chair",width:25,depth:24,url:"https://www.northcape.com/product/overton-padded-dining-chair/"},
-    {name:"Overton Padded Arm Chair",width:26,depth:24,url:"https://www.northcape.com/product/overton-padded-dining-chair/"},
     {name:"Overton Rect Coffee Table",width:44,depth:24,url:"https://www.northcape.com/product/overton-rectangle-coffee-table-w-textured-alum-wood-look-finish/"},
     {name:"Overton Conversation Table",width:40,depth:40,url:"https://www.northcape.com/product/overton-conversation-table-w-textured-alum-wood-look-finish-strong/"},
     {name:"Overton Square End Table",width:20,depth:20,url:"https://www.northcape.com/product/overton-square-end-table-wood-finish-texture/"}
-  ]},
-  {name:"Lakeside Collection",products:[
-    {name:"Lakeside Sofa",width:80,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
-    {name:"Loveseat",width:56,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
-    {name:"Lakeside Lounge Chair",width:32,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
-    {name:"Lakeside Ottoman",width:30,depth:26,url:"https://www.northcape.com/product-category/lakeside/"},
-    {name:"Lakeside Corner Section",width:34,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
-    {name:"Lakeside Armless Section",width:28,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
-    {name:"Lakeside Left Arm Section",width:34,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
-    {name:"Lakeside Right Arm Section",width:34,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
-    {name:"Lakeside Chaise Section",width:34,depth:62,url:"https://www.northcape.com/product-category/lakeside/"},
-    {name:"Lakeside Coffee Table",width:44,depth:24,url:"https://www.northcape.com/product-category/lakeside/"},
-    {name:"Lakeside End Table",width:22,depth:22,url:"https://www.northcape.com/product-category/lakeside/"},
-    {name:"Lakeside 3-Pc Sectional",width:90,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
-    {name:"Lakeside 4-Pc Sectional w/Chaise",width:90,depth:68,url:"https://www.northcape.com/product-category/lakeside/"}
-  ]},
-  {name:"Edgewater Collection",products:[
-    {name:"Edgewater Sofa",width:82,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
-    {name:"Edgewater Loveseat",width:58,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
-    {name:"Edgewater Lounge Chair",width:34,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
-    {name:"Edgewater Ottoman",width:32,depth:28,url:"https://www.northcape.com/product-category/edgewater/"},
-    {name:"Edgewater Corner Section",width:36,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
-    {name:"Edgewater Armless Section",width:30,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
-    {name:"Edgewater Left Arm Section",width:36,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
-    {name:"Edgewater Right Arm Section",width:36,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
-    {name:"Edgewater Chaise Section",width:36,depth:64,url:"https://www.northcape.com/product-category/edgewater/"},
-    {name:"Edgewater Coffee Table",width:46,depth:26,url:"https://www.northcape.com/product-category/edgewater/"},
-    {name:"Edgewater End Table",width:24,depth:24,url:"https://www.northcape.com/product-category/edgewater/"},
-    {name:"Edgewater 3-Pc Sectional",width:102,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
-    {name:"Edgewater 4-Pc Sectional w/Chaise",width:102,depth:72,url:"https://www.northcape.com/product-category/edgewater/"}
   ]},
   {name:"Cabo & Seaside",products:[
     {name:"Cabo Sofa",width:77,depth:33,url:"https://www.northcape.com/product-category/cabo/"},
@@ -785,8 +933,71 @@ let isInsertVertex = false;
 let liveResizeDims = null;
 
 let catalogMfr = null;
-let catalogColor = null;
+let catalogColor = null;      // primary frame color
+let catalogColor2 = null;     // secondary color (CC only — for ordering, not rendered)
 let catalogCushion = null;
+
+// ============================================================
+// PROMPT MODAL
+// ============================================================
+function openPromptModal() {
+  document.getElementById('prompt-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('prompt-textarea').focus(), 100);
+}
+function setPrompt(text) {
+  document.getElementById('prompt-textarea').value = text;
+  document.getElementById('prompt-textarea').focus();
+}
+async function sendPromptModal() {
+  const text = document.getElementById('prompt-textarea').value.trim();
+  if (!text) return;
+  document.getElementById('prompt-textarea').value = '';
+  closeModal('prompt-modal');
+  // Route through mobile chat bar
+  addChatMsg(text, 'user');
+  chatHistory.push({role:'user', content:text});
+  const localResult = parseCommand(text);
+  if (localResult.success) {
+    addChatMsg(localResult.msg, 'assistant');
+    showMobileToast(localResult.msg);
+    chatHistory.push({role:'assistant', content:localResult.msg});
+    return;
+  }
+  if (!localResult.msg.startsWith("I didn't understand")) {
+    addChatMsg(localResult.msg, 'err');
+    showMobileToast(localResult.msg, true);
+    return;
+  }
+  // AI fallback
+  showMobileToast('Thinking…');
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:512,
+        system:`Translate user deck planner requests into commands. Current plan: ${buildPlanSummary()}. Reply with commands + ✓ explanation.`,
+        messages: chatHistory.slice(-6)})
+    });
+    const data = await resp.json();
+    const reply = data.content?.[0]?.text||'';
+    const lines = reply.trim().split('\n').filter(l=>l.trim());
+    let explanation='', anySuccess=false;
+    for (const line of lines) {
+      if(line.startsWith('✓')){explanation=line;continue;}
+      const r=parseCommand(line.trim());
+      if(r.success) anySuccess=true;
+    }
+    const msg = explanation||(anySuccess?'✓ Done!':reply);
+    addChatMsg(msg, anySuccess?'assistant':'err');
+    showMobileToast(msg, !anySuccess);
+    chatHistory.push({role:'assistant',content:msg});
+  } catch(e) {
+    addChatMsg("Couldn't process that. Try: \"Add deck 20x16\"", 'err');
+  }
+}
+// Enter key in prompt textarea
+document.getElementById('prompt-textarea').addEventListener('keydown', e=>{
+  if(e.key==='Enter' && !e.shiftKey){e.preventDefault();sendPromptModal();}
+});
 
 // ============================================================
 // COORDINATE HELPERS
@@ -1033,28 +1244,72 @@ function drawDeck(ctx, el, ppi, sel) {
 }
 
 function drawBorderBoards(ctx, pts, borderColor, ppi) {
+  if (!pts || pts.length < 3) return;
+  // Board width = 3.5 inches × 2 boards = 7 inches
   const bw = 3.5 * ppi * 2;
+
+  // Compute inset polygon by offsetting each edge inward by bw
+  // For each edge, compute inward normal, offset both endpoints
+  const n = pts.length;
+  // Step 1: for each edge compute inward unit normal
+  const normals = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i+1)%n];
+    const dx = b.x-a.x, dy = b.y-a.y;
+    const len = Math.hypot(dx,dy)||1;
+    // Rotate 90° left = (-dy, dx) — outward for CCW, inward for CW
+    // We'll determine sign after
+    normals.push({ nx:-dy/len, ny:dx/len });
+  }
+  // Determine if polygon is CW or CCW (signed area)
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i+1)%n];
+    area += (a.x*b.y - b.x*a.y);
+  }
+  const sign = area > 0 ? 1 : -1; // CCW = positive area → normals already inward with sign=1
+
+  // Step 2: offset each edge inward by bw, find intersections of adjacent offset edges
+  // Offset lines: for edge i, shift both endpoints by bw * normal * sign
+  const offsets = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i+1)%n];
+    const nx = normals[i].nx * bw * sign;
+    const ny = normals[i].ny * bw * sign;
+    offsets.push({
+      ax: a.x+nx, ay: a.y+ny,
+      bx: b.x+nx, by: b.y+ny
+    });
+  }
+
+  // Step 3: intersect adjacent offset edges to get inner vertices
+  function lineIntersect(ax,ay,bx,by,cx,cy,dx,dy) {
+    const A1=by-ay, B1=ax-bx, C1=A1*ax+B1*ay;
+    const A2=dy-cy, B2=cx-dx, C2=A2*cx+B2*cy;
+    const det=A1*B2-A2*B1;
+    if(Math.abs(det)<0.001) return {x:(ax+bx)/2,y:(ay+by)/2};
+    return {x:(C1*B2-C2*B1)/det, y:(A1*C2-A2*C1)/det};
+  }
+
+  const inner = [];
+  for (let i = 0; i < n; i++) {
+    const prev = offsets[(i-1+n)%n];
+    const curr = offsets[i];
+    const pt = lineIntersect(
+      prev.ax,prev.ay,prev.bx,prev.by,
+      curr.ax,curr.ay,curr.bx,curr.by
+    );
+    inner.push(pt);
+  }
+
+  // Step 4: draw the ring (outer path + inner path = border ring)
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(pts[0].x, pts[0].y);
-  pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
-  ctx.closePath();
-  ctx.clip();
-  // Inset polygon
-  const cx = pts.reduce((s,p)=>s+p.x,0)/pts.length;
-  const cy2 = pts.reduce((s,p)=>s+p.y,0)/pts.length;
-  const inner = pts.map(p => {
-    const dx = p.x-cx, dy = p.y-cy2;
-    const len = Math.hypot(dx,dy)||1;
-    return { x: p.x - dx/len*bw, y: p.y - dy/len*bw };
-  });
-  // Fill the border ring using even-odd rule
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x, pts[i].y);
   ctx.closePath();
   ctx.moveTo(inner[0].x, inner[0].y);
-  inner.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  for (let i = 1; i < n; i++) ctx.lineTo(inner[i].x, inner[i].y);
   ctx.closePath();
   ctx.fillStyle = borderColor;
   ctx.fill('evenodd');
@@ -2181,28 +2436,47 @@ function toggleSnap() {
 // MERGE DECK SEGMENTS
 // ============================================================
 function mergeDeckSegments() {
-  const decks = plan.elements.filter(e=>e.type==='deck');
-  if(decks.length<2){ showMergeBanner('Need at least 2 deck segments to merge.'); return; }
-  const merged = polygonUnion(decks.map(d=>d.points));
-  if(!merged){ showMergeBanner('Deck segments must be adjacent or overlapping to merge.'); return; }
-  const color = decks[0].color||'#8B7260';
-  const totalArea = merged.reduce((s,p)=>s,0);
-  const bbox = merged.reduce((bb,p)=>({
-    minX:Math.min(bb.minX,p.x),minY:Math.min(bb.minY,p.y),
-    maxX:Math.max(bb.maxX,p.x),maxY:Math.max(bb.maxY,p.y)
-  }),{minX:Infinity,minY:Infinity,maxX:-Infinity,maxY:-Infinity});
-  const w=bbox.maxX-bbox.minX, h=bbox.maxY-bbox.minY;
+  // Collect all deck segments — including any existing merged-deck
+  const allDecks = plan.elements.filter(e => e.type==='deck' || e.type==='merged-deck');
+  const regularDecks = plan.elements.filter(e => e.type==='deck');
+
+  if (regularDecks.length < 2 && allDecks.length < 2) {
+    showMergeBanner('Need at least 2 deck segments to merge.');
+    return;
+  }
+
+  // Get all polygons — decks use points[], merged-deck uses outline[]
+  const polygons = allDecks.map(d => d.points || d.outline);
+  const merged = polygonUnion(polygons);
+  if (!merged) { showMergeBanner('Deck segments must be adjacent or overlapping to merge.'); return; }
+
+  // Preserve first deck's color and border color
+  const firstDeck = allDecks[0];
+  const color = firstDeck.color || '#8B7260';
+  const borderColor = firstDeck.borderColor || null; // keep original border
+
+  const bbox = merged.reduce((bb,p) => ({
+    minX:Math.min(bb.minX,p.x), minY:Math.min(bb.minY,p.y),
+    maxX:Math.max(bb.maxX,p.x), maxY:Math.max(bb.maxY,p.y)
+  }), {minX:Infinity,minY:Infinity,maxX:-Infinity,maxY:-Infinity});
+  const w = bbox.maxX-bbox.minX, h = bbox.maxY-bbox.minY;
+
   const mergedEl = {
-    id:newId('merged-deck'), type:'merged-deck',
-    outline:merged, color, borderColor:decks[0].borderColor||null,
-    label:`Deck ${fmtFtSimple(w)}×${fmtFtSimple(h)}`
+    id: newId('merged-deck'),
+    type: 'merged-deck',
+    outline: merged,
+    color,
+    borderColor, // carries through from first deck segment
+    label: `Deck ${fmtFtSimple(w)}×${fmtFtSimple(h)}`
   };
-  // Remove original decks, add merged
-  plan.elements=plan.elements.filter(e=>e.type!=='deck');
+
+  // Remove all deck and merged-deck elements, insert the new merged one
+  plan.elements = plan.elements.filter(e => e.type!=='deck' && e.type!=='merged-deck');
   plan.elements.unshift(mergedEl);
-  plan.selectedId=mergedEl.id;
+  plan.selectedId = mergedEl.id;
   setDirty(true); redraw(); renderProps();
-  showMergeBanner(`✓ Merged ${decks.length} segments into one deck shape. All exterior dimensions shown.`);
+  const bMsg = borderColor ? ` Border color preserved.` : '';
+  showMergeBanner(`✓ Merged ${allDecks.length} segments.${bMsg} All exterior dimensions shown.`);
 }
 
 function showMergeBanner(msg){
@@ -2368,6 +2642,19 @@ function renderColorsPanel() {
   body.innerHTML=html;
 }
 
+function updateFurnColor(id, hex, name, slot) {
+  const el = plan.elements.find(e=>e.id===id);
+  if (!el) return;
+  if (slot === 1) { el.color = hex; el.colorName = name; }
+  else { el.color2 = hex; el.color2Name = name; }
+  setDirty(true); redraw(); renderProps();
+}
+function updateFurnCushion(id, hex, name) {
+  const el = plan.elements.find(e=>e.id===id);
+  if (!el) return;
+  el.cushionColor = hex; el.cushionName = name;
+  setDirty(true); redraw(); renderProps();
+}
 function applyColorToSelected(hex, name) {
   const el=plan.elements.find(e=>e.id===plan.selectedId);
   if(!el) return;
@@ -2433,12 +2720,61 @@ function renderProps() {
     </div>`;
   } else if(el.type==='furniture'){
     html+=`<div class="prop-row"><label>Name</label><input value="${el.name||''}" onchange="updateProp('name',this.value)"/></div>
-    <div class="prop-grid">
-      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)"/></div>
-      <div class="prop-row"><label>Depth (in)</label><input type="number" value="${Math.round(el.depth)}" onchange="updateProp('depth',+this.value)"/></div>
-      <div class="prop-row"><label>Rotation (°)</label><input type="number" value="${el.rotation||0}" onchange="updateProp('rotation',+this.value)"/></div>
-    </div>`;
-    if(el.cushionColor) html+=`<div class="prop-row"><label>Cushion</label><div style="width:22px;height:22px;border-radius:4px;background:${el.cushionColor};border:1px solid var(--border2)"></div></div>`;
+    <div class="prop-row"><label>Rotation (°)</label><input type="number" value="${el.rotation||0}" style="width:80px" onchange="updateProp('rotation',+this.value)"/></div>`;
+
+    // Manufacturer — CC gets primary + secondary, NC gets frame + cushion
+    const isCC = el.manufacturer === 'casual-comfort';
+    const frameColors = isCC ? CC_COLORS : NC_COLORS;
+    const frameByGroup = {};
+    frameColors.forEach(c => { const g=c.group||'Colors'; if(!frameByGroup[g]) frameByGroup[g]=[]; frameByGroup[g].push(c); });
+
+    // Primary color
+    html += `<div class="prop-row" style="margin-top:6px">
+      <label>Primary Color — <span style="color:var(--primary);font-weight:600">${el.colorName || getColorName(el.color) || el.color}</span></label>
+      <div style="margin-top:4px">`;
+    Object.entries(frameByGroup).forEach(([g, cols]) => {
+      html += `<div style="margin-bottom:2px"><span style="font-size:9px;color:var(--text3)">${g}</span><div class="swatches" style="margin-top:2px">`;
+      cols.forEach(c => {
+        const sel = el.color === c.hex;
+        html += `<div class="swatch ${sel?'sel':''}" style="background:${c.hex}" data-name="${c.name}" title="${c.name}" onclick="updateFurnColor('${el.id}','${c.hex}','${c.name.replace(/'/g,"\\'")}',1)"></div>`;
+      });
+      html += `</div></div>`;
+    });
+    html += `</div></div>`;
+
+    // Secondary color (CC only — for ordering)
+    if (isCC) {
+      html += `<div class="prop-row" style="background:var(--surface3);border-radius:6px;padding:6px;border:1px solid var(--border2)">
+        <label style="color:var(--text3)">Secondary / Accent Color <span style="font-weight:400;font-size:10px">(order reference only)</span>${el.color2?` — <span style="color:var(--text2);font-weight:600">${el.color2Name||el.color2}</span>`:''}
+        </label>
+        <div class="swatches" style="margin-top:4px">`;
+      CC_COLORS.forEach(c => {
+        const sel = el.color2 === c.hex;
+        html += `<div class="swatch ${sel?'sel':''}" style="background:${c.hex}" data-name="${c.name}" title="${c.name}" onclick="updateFurnColor('${el.id}','${c.hex}','${c.name.replace(/'/g,"\\'")}',2)"></div>`;
+      });
+      if (el.color2) html += `<button class="btn btn-danger" style="font-size:10px;padding:1px 6px;margin-left:4px" onclick="updateFurnColor('${el.id}',null,null,2)">✕</button>`;
+      html += `</div></div>`;
+    }
+
+    // Cushion / fabric
+    const cushionGroups = {};
+    SUNBRELLA_CUSHIONS.forEach(c => { const g=c.group||'Sunbrella'; if(!cushionGroups[g]) cushionGroups[g]=[]; cushionGroups[g].push(c); });
+    html += `<div class="prop-row" style="margin-top:2px">
+      <label>Cushion / Fabric — <span style="color:var(--primary);font-weight:600">${el.cushionName || (el.cushionColor ? SUNBRELLA_CUSHIONS.find(c=>c.hex===el.cushionColor)?.name||'Custom' : 'None')}</span></label>
+      <div style="margin-top:4px">`;
+    if (!el.cushionColor) {
+      html += `<div style="font-size:10px;color:var(--text3);margin-bottom:4px">Click a fabric to add cushion</div>`;
+    }
+    Object.entries(cushionGroups).forEach(([g, items]) => {
+      html += `<div style="margin-bottom:2px"><span style="font-size:9px;color:var(--text3)">${g}</span><div class="swatches" style="margin-top:2px">`;
+      items.forEach(c => {
+        const sel = el.cushionColor === c.hex;
+        html += `<div class="swatch ${sel?'sel':''}" style="background:${c.hex}" data-name="${c.name}" title="${c.name}" onclick="updateFurnCushion('${el.id}','${c.hex}','${c.name.replace(/'/g,"\\'")}')"></div>`;
+      });
+      html += `</div></div>`;
+    });
+    if (el.cushionColor) html += `<button class="btn btn-danger" style="font-size:10px;padding:1px 6px;margin-top:2px" onclick="updateFurnCushion('${el.id}',null,null)">✕ Remove cushion</button>`;
+    html += `</div></div>`;
   } else if(el.type==='post'||el.type==='pillar'){
     html+=`<div class="prop-row"><label>Size (in)</label><input type="number" value="${el.sizeInches||4}" onchange="updateProp('sizeInches',+this.value)" min="2" max="24"/></div>`;
   } else if(el.type==='pergola'){
@@ -3005,13 +3341,13 @@ function openCatalog(mfr) {
   const frameColors = isCC ? CC_COLORS : NC_COLORS;
   const cushions = isCC ? CC_CUSHIONS : NC_CUSHIONS;
 
-  // Default selections
-  catalogColor = frameColors[0];
+  catalogColor  = frameColors[0];
+  catalogColor2 = null;
   catalogCushion = cushions[0];
 
   document.getElementById('catalog-title').textContent = isCC ? 'Casual Comfort USA' : 'NorthCape Furniture';
 
-  // Build product list
+  // Product list
   let html = '';
   catalog.forEach(cat => {
     html += `<div class="cat-section"><h3>${cat.name}</h3>`;
@@ -3019,50 +3355,67 @@ function openCatalog(mfr) {
       html += `<div class="cat-item">
         <span class="name">${prod.name}</span>
         <span class="dims">${prod.width}"×${prod.depth}"</span>
-        <button class="add-btn" onclick="addFromCatalog(${JSON.stringify(prod).replace(/"/g,'&quot;')})">Add to Plan</button>
+        <button class="add-btn" onclick="addFromCatalog(${JSON.stringify(prod).replace(/"/g,'&quot;')})">Add</button>
       </div>`;
     });
     html += '</div>';
   });
   document.getElementById('catalog-body').innerHTML = html;
 
-  // Build footer — frame colors + cushion colors side by side
-  // Frame color swatches
-  let fhtml = `<div style="width:100%">`;
-
-  // Row 1: Frame / Body Color
-  fhtml += `<div style="margin-bottom:10px">
-    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:5px">
-      Frame Color — <span id="cat-frame-label" style="color:var(--text2);text-transform:none;letter-spacing:0">${frameColors[0].name}</span>
-    </div>
-    <div class="swatches" id="cat-frame-swatches">`;
-  frameColors.forEach((c, i) => {
-    fhtml += `<div class="cat-frame-swatch swatch ${i===0?'sel':''}" style="background:${c.hex}" data-name="${c.name}" title="${c.name}" onclick="setCatalogFrame(this,'${c.hex}','${c.name}')"></div>`;
-  });
-  fhtml += `</div></div>`;
-
-  // Row 2: Cushion / Fabric Color — grouped by Sunbrella group, works for both mfrs
+  // Build footer
   const groups = {};
   cushions.forEach(c => {
-    const g = c.group || 'Sunbrella';
+    const g = c.group || 'Cushion';
     if (!groups[g]) groups[g] = [];
     groups[g].push(c);
   });
 
-  fhtml += `<div>
-    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:5px">
-      Cushion / Fabric — <span id="cat-cushion-label" style="color:var(--text2);text-transform:none;letter-spacing:0">${cushions[0].name}</span>
-    </div>`;
+  let fhtml = `<div style="width:100%">`;
 
+  // Primary frame color
+  fhtml += `<div style="margin-bottom:8px">
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:4px">
+      Primary Color — <span id="cat-frame-label" style="color:var(--primary);text-transform:none;letter-spacing:0;font-size:11px">${frameColors[0].name}</span>
+    </div>
+    <div class="swatches" id="cat-frame-swatches">`;
+  const frameByGroup = {};
+  frameColors.forEach(c => { const g=c.group||'Colors'; if(!frameByGroup[g]) frameByGroup[g]=[]; frameByGroup[g].push(c); });
+  Object.entries(frameByGroup).forEach(([g,cols]) => {
+    fhtml += `<div style="width:100%;margin-bottom:2px"><span style="font-size:9px;color:var(--text3)">${g} &nbsp;</span><span class="swatches" style="display:inline-flex">`;
+    cols.forEach((c,i) => {
+      const sel = i===0 && Object.keys(frameByGroup)[0]===g;
+      fhtml += `<div class="cat-frame-swatch swatch ${sel?'sel':''}" style="background:${c.hex}" data-name="${c.name}" title="${c.name}" onclick="setCatalogFrame(this,'${c.hex}','${c.name}')"></div>`;
+    });
+    fhtml += `</span></div>`;
+  });
+  fhtml += `</div></div>`;
+
+  // Secondary color — CC only (for ordering reference, doesn't render)
+  if (isCC) {
+    fhtml += `<div style="margin-bottom:8px;padding:6px 8px;background:var(--surface3);border-radius:6px;border:1px solid var(--border2)">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:4px">
+        Secondary / Accent Color (for order only) — <span id="cat-frame2-label" style="color:var(--text2);text-transform:none;letter-spacing:0;font-size:11px">None selected</span>
+      </div>
+      <div class="swatches" id="cat-frame2-swatches">`;
+    frameColors.forEach(c => {
+      fhtml += `<div class="cat-frame2-swatch swatch" style="background:${c.hex}" data-name="${c.name}" title="${c.name}" onclick="setCatalogFrame2(this,'${c.hex}','${c.name}')"></div>`;
+    });
+    fhtml += `</div><p style="font-size:9px;color:var(--text3);margin-top:4px">CC pieces support 2-tone combinations. Secondary color is recorded for ordering but shows as primary on the plan.</p>
+    </div>`;
+  }
+
+  // Cushion / Fabric
+  fhtml += `<div>
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:4px">
+      Cushion / Fabric — <span id="cat-cushion-label" style="color:var(--primary);text-transform:none;letter-spacing:0;font-size:11px">${cushions[0].name}</span>
+    </div>`;
   Object.entries(groups).forEach(([groupName, items]) => {
-    fhtml += `<div style="margin-bottom:4px">
-      <div style="font-size:9px;color:var(--text3);margin-bottom:2px">${groupName}</div>
-      <div class="swatches">`;
+    fhtml += `<div style="margin-bottom:3px"><span style="font-size:9px;color:var(--text3)">${groupName} &nbsp;</span><span class="swatches" style="display:inline-flex;flex-wrap:wrap">`;
     items.forEach((c, i) => {
       const isFirst = groupName === Object.keys(groups)[0] && i === 0;
       fhtml += `<div class="cat-cushion-swatch swatch ${isFirst?'sel':''}" style="background:${c.hex}" data-name="${c.name}" title="${c.name}" onclick="setCatalogCushion(this,'${c.hex}','${c.name}')"></div>`;
     });
-    fhtml += `</div></div>`;
+    fhtml += `</span></div>`;
   });
   fhtml += `</div></div>`;
 
@@ -3077,7 +3430,13 @@ function setCatalogFrame(el, hex, name) {
   const lbl = document.getElementById('cat-frame-label');
   if (lbl) lbl.textContent = name;
 }
-
+function setCatalogFrame2(el, hex, name) {
+  catalogColor2 = { hex, name };
+  document.querySelectorAll('#catalog-footer .cat-frame2-swatch').forEach(s => s.classList.remove('sel'));
+  el.classList.add('sel');
+  const lbl = document.getElementById('cat-frame2-label');
+  if (lbl) lbl.textContent = name;
+}
 function setCatalogCushion(el, hex, name) {
   catalogCushion = { hex, name };
   document.querySelectorAll('#catalog-footer .cat-cushion-swatch').forEach(s => s.classList.remove('sel'));
@@ -3085,8 +3444,6 @@ function setCatalogCushion(el, hex, name) {
   const lbl = document.getElementById('cat-cushion-label');
   if (lbl) lbl.textContent = name;
 }
-
-// Keep old setCatalogColor as alias so any remaining references don't break
 function setCatalogColor(el, hex) { setCatalogFrame(el, hex, hex); }
 
 function addFromCatalog(prod) {
@@ -3101,14 +3458,20 @@ function addFromCatalog(prod) {
     id: newId('furn'), type:'furniture', name:prod.name,
     x:px, y:py, width:prod.width, depth:prod.depth,
     rotation:0, color:catalogColor?.hex||'#8B6F5A',
+    colorName: catalogColor?.name||'',
+    color2: catalogColor2?.hex||null,
+    color2Name: catalogColor2?.name||null,
     sourceUrl:prod.url, manufacturer:catalogMfr
   };
-  // Apply cushion for both manufacturers if one is selected
-  if (catalogCushion?.hex) el.cushionColor = catalogCushion.hex;
+  if (catalogCushion?.hex) {
+    el.cushionColor = catalogCushion.hex;
+    el.cushionName = catalogCushion.name;
+  }
   addElement(el);
-  const cushionName = catalogCushion?.name ? ` · ${catalogCushion.name}` : '';
-  const colorName = catalogColor?.name ? catalogColor.name : catalogColor?.hex || '';
-  addChatMsg(`Added "${prod.name}" — ${colorName}${cushionName}`, 'assistant');
+  const parts = [catalogColor?.name||''];
+  if (catalogColor2?.name) parts.push(`+ ${catalogColor2.name}`);
+  if (catalogCushion?.name) parts.push(`· ${catalogCushion.name} cushion`);
+  addChatMsg(`Added "${prod.name}" — ${parts.join(' ')}`, 'assistant');
 }
 
 function closeModal(id) { document.getElementById(id).style.display='none'; }
@@ -3118,23 +3481,33 @@ function closeModal(id) { document.getElementById(id).style.display='none'; }
 // ============================================================
 function openOrderList() {
   const furn = plan.elements.filter(e=>e.type==='furniture'&&e.sourceUrl);
-  if (furn.length===0) { alert('No catalog furniture on the plan. Import items from Casual Comfort or NorthCape first.'); return; }
+  if (furn.length===0) { alert('No catalog furniture on the plan. Import from Casual Comfort or NorthCape first.'); return; }
   let html = '';
   furn.forEach(el => {
-    const frameColor = ALL_COLORS.find(c=>c.hex===el.color)?.name || CC_COLORS.find(c=>c.hex===el.color)?.name || NC_COLORS.find(c=>c.hex===el.color)?.name || el.color || '—';
-    const cushionName = el.cushionColor ? (SUNBRELLA_CUSHIONS.find(c=>c.hex===el.cushionColor)?.name || el.cushionColor) : null;
-    const mfrLabel = el.manufacturer==='northcape' ? 'NorthCape' : el.manufacturer==='casual-comfort' ? 'Casual Comfort' : '';
+    const primaryName = el.colorName || ALL_COLORS.find(c=>c.hex===el.color)?.name || CC_COLORS.find(c=>c.hex===el.color)?.name || NC_COLORS.find(c=>c.hex===el.color)?.name || el.color || '—';
+    const secondaryName = el.color2Name || (el.color2 ? CC_COLORS.find(c=>c.hex===el.color2)?.name||el.color2 : null);
+    const cushionName = el.cushionName || (el.cushionColor ? SUNBRELLA_CUSHIONS.find(c=>c.hex===el.cushionColor)?.name||el.cushionColor : null);
+    const mfrLabel = el.manufacturer==='northcape' ? 'NorthCape' : el.manufacturer==='casual-comfort' ? 'Casual Comfort USA' : '';
     html += `<div class="order-row">
-      <div>
-        <div style="font-weight:600;margin-bottom:2px">${el.name}</div>
-        <div style="font-size:11px;color:var(--text3)">${mfrLabel} · ${el.width}"×${el.depth}"</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:2px;font-size:11px;color:var(--text3)">
-          <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${el.color};border:1px solid rgba(255,255,255,0.2);flex-shrink:0"></span>
-          Frame: ${frameColor}
-          ${cushionName ? `<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${el.cushionColor};border:1px solid rgba(255,255,255,0.2);flex-shrink:0;margin-left:8px"></span> Cushion: ${cushionName}` : ''}
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px;margin-bottom:3px">${el.name}</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${mfrLabel} · ${el.width}"W × ${el.depth}"D</div>
+        <div style="display:flex;flex-direction:column;gap:3px;font-size:11px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:14px;height:14px;border-radius:3px;background:${el.color};border:1px solid rgba(255,255,255,0.2);flex-shrink:0"></div>
+            <span style="color:var(--text2)">Primary: <strong>${primaryName}</strong></span>
+          </div>
+          ${el.color2 ? `<div style="display:flex;align-items:center;gap:6px">
+            <div style="width:14px;height:14px;border-radius:3px;background:${el.color2};border:1px solid rgba(255,255,255,0.2);flex-shrink:0"></div>
+            <span style="color:var(--text2)">Secondary: <strong>${secondaryName}</strong></span>
+          </div>` : ''}
+          ${cushionName ? `<div style="display:flex;align-items:center;gap:6px">
+            <div style="width:14px;height:14px;border-radius:3px;background:${el.cushionColor};border:1px solid rgba(255,255,255,0.2);flex-shrink:0"></div>
+            <span style="color:var(--text2)">Cushion: <strong>${cushionName}</strong></span>
+          </div>` : ''}
         </div>
       </div>
-      ${el.sourceUrl ? `<a href="${el.sourceUrl}" target="_blank" class="order-url">View →</a>` : ''}
+      ${el.sourceUrl ? `<a href="${el.sourceUrl}" target="_blank" class="order-url" style="align-self:center">View →</a>` : ''}
     </div>`;
   });
   document.getElementById('order-body').innerHTML = html;
@@ -3144,11 +3517,12 @@ function openOrderList() {
 function copyOrderList() {
   const furn = plan.elements.filter(e=>e.type==='furniture'&&e.sourceUrl);
   const text = furn.map(el => {
-    const frameColor = ALL_COLORS.find(c=>c.hex===el.color)?.name || CC_COLORS.find(c=>c.hex===el.color)?.name || NC_COLORS.find(c=>c.hex===el.color)?.name || el.color;
-    const cushionName = el.cushionColor ? (SUNBRELLA_CUSHIONS.find(c=>c.hex===el.cushionColor)?.name || el.cushionColor) : null;
-    return `${el.name} | ${el.width}"×${el.depth}" | Frame: ${frameColor}${cushionName ? ` | Cushion: ${cushionName}` : ''}`;
+    const primary = el.colorName || CC_COLORS.find(c=>c.hex===el.color)?.name || NC_COLORS.find(c=>c.hex===el.color)?.name || el.color;
+    const secondary = el.color2Name ? ` | Secondary: ${el.color2Name}` : '';
+    const cushion = el.cushionName ? ` | Cushion: ${el.cushionName}` : '';
+    return `${el.name} | ${el.width}"×${el.depth}" | Primary: ${primary}${secondary}${cushion}`;
   }).join('\n');
-  navigator.clipboard.writeText(text).then(()=>addChatMsg('Order list copied to clipboard!','assistant'));
+  navigator.clipboard.writeText(text).then(()=>addChatMsg('Order list copied!','assistant'));
 }
 
 // ============================================================
