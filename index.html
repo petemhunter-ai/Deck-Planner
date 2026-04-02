@@ -272,6 +272,7 @@ canvas{display:block;cursor:crosshair}
     <div style="width:1px;height:20px;background:var(--border2);margin:0 4px"></div>
     <span style="font-size:11px;color:var(--text3)">Deck:</span>
     <button class="btn-merge" onclick="mergeDeckSegments()" id="merge-btn" title="Merge all adjacent deck segments into one unified shape">⟁ Merge Deck Segments</button>
+    <button class="btn-merge" onclick="quickAdd('deck-band')" title="Add a 2-board horizontal band across the deck (uses border color)">⟺ Add Band</button>
     <div style="width:1px;height:20px;background:var(--border2);margin:0 4px"></div>
     <span style="font-size:11px;color:var(--text3)">Snap:</span>
     <button class="btn active" id="snap-btn" onclick="toggleSnap()" title="Toggle grid snap">⊞ Grid Snap</button>
@@ -982,6 +983,22 @@ function quickAdd(type) {
     addElement({ id:newId('hottub'), type:'hot-tub', x:48, y:48, width:84, height:84, color:'#3a6a8a', label:"Hot Tub 7'×7'" });
   } else if (type === 'fire-pit') {
     addElement({ id:newId('firepit'), type:'fire-pit', x:48, y:48, diameter:46, color:'#4a3020', label:"Fire Pit" });
+  } else if (type === 'deck-band') {
+    // Find the first merged-deck (or deck) that has a borderColor set
+    const deck = plan.elements.find(e=>(e.type==='merged-deck'||e.type==='deck') && e.borderColor)
+                || plan.elements.find(e=>e.type==='merged-deck'||e.type==='deck');
+    if (!deck) { alert('Add and merge deck segments first, then set a border color before adding a band.'); return; }
+    const pts = deck.outline || deck.points;
+    const minY = Math.min(...pts.map(p=>p.y));
+    const maxY = Math.max(...pts.map(p=>p.y));
+    const midY = (minY + maxY) / 2;
+    addElement({
+      id: newId('band'),
+      type: 'deck-band',
+      deckId: deck.id,
+      y: snapToGrid(midY),   // y position in inches (top of band)
+      color: deck.borderColor || deck.color || '#8B7260'
+    });
   }
 }
 
@@ -1052,10 +1069,12 @@ function redraw() {
     }
   }
 
-  // Draw elements: patios first (bottom), then everything else
-  const patios = plan.elements.filter(e => e.type === 'patio');
-  const others = plan.elements.filter(e => e.type !== 'patio');
-  [...patios, ...others].forEach(el => {
+  // Draw order: patios → decks → deck-bands → everything else
+  const patios  = plan.elements.filter(e => e.type === 'patio');
+  const decks   = plan.elements.filter(e => e.type === 'deck' || e.type === 'merged-deck');
+  const bands   = plan.elements.filter(e => e.type === 'deck-band');
+  const others  = plan.elements.filter(e => e.type !== 'patio' && e.type !== 'deck' && e.type !== 'merged-deck' && e.type !== 'deck-band');
+  [...patios, ...decks, ...bands, ...others].forEach(el => {
     ctx.save();
     const sel = el.id === plan.selectedId;
     drawElement(ctx, el, ppi, sel);
@@ -1096,6 +1115,7 @@ function drawElement(ctx, el, ppi, sel) {
     case 'hot-tub':  drawHotTub(ctx, el, ppi, sel); break;
     case 'fire-pit': drawFirePit(ctx, el, ppi, sel); break;
     case 'merged-deck': drawMergedDeck(ctx, el, ppi, sel); break;
+    case 'deck-band':   drawDeckBand(ctx, el, ppi, sel); break;
   }
 }
 
@@ -1316,8 +1336,22 @@ function drawStairs(ctx, el, ppi, sel) {
       {x:el.x, y:el.y+el.depth}
     ];
   }
-  const pts = el.points.map(p => ({x: p.x*ppi+plan.panX, y: p.y*ppi+plan.panY}));
   const steps = Math.max(1, el.steps || 4);
+  const angle = (el.rotation || 0) * Math.PI / 180;
+
+  // Centroid in canvas coords (before rotation) — rotate around this point
+  const rawPts = el.points.map(p => ({x: p.x*ppi+plan.panX, y: p.y*ppi+plan.panY}));
+  const canvasCx = rawPts.reduce((s,p)=>s+p.x,0)/rawPts.length;
+  const canvasCy = rawPts.reduce((s,p)=>s+p.y,0)/rawPts.length;
+
+  ctx.save();
+  if (angle) {
+    ctx.translate(canvasCx, canvasCy);
+    ctx.rotate(angle);
+    ctx.translate(-canvasCx, -canvasCy);
+  }
+
+  const pts = rawPts; // already in canvas coords
 
   // Fill
   ctx.beginPath();
@@ -1328,7 +1362,6 @@ function drawStairs(ctx, el, ppi, sel) {
   ctx.fill();
 
   // Board lines clipped to polygon — 7" boards (double deck width)
-  // Lines run across width (horizontal), one per step/board
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(pts[0].x, pts[0].y);
@@ -1338,27 +1371,25 @@ function drawStairs(ctx, el, ppi, sel) {
 
   const minX = Math.min(...pts.map(p=>p.x)), maxX = Math.max(...pts.map(p=>p.x));
   const minY = Math.min(...pts.map(p=>p.y)), maxY = Math.max(...pts.map(p=>p.y));
-  const boardStep = 7 * ppi; // 7" per stair board (double deck's 3.5")
+  const boardStep = 7 * ppi;
 
-  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
   for (let ly = minY + boardStep; ly < maxY; ly += boardStep) {
     ctx.beginPath(); ctx.moveTo(minX, ly); ctx.lineTo(maxX, ly); ctx.stroke();
-    // Subtle highlight (nosing edge)
     ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 0.5;
     ctx.beginPath(); ctx.moveTo(minX, ly+1); ctx.lineTo(maxX, ly+1); ctx.stroke();
     ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
   }
 
-  // Descent arrow (top = deck level, bottom = ground)
-  const cx = (minX+maxX)/2, cy = (minY+maxY)/2;
+  // Descent arrow
+  const acx = (minX+maxX)/2, acy = (minY+maxY)/2;
   ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(cx, minY+5); ctx.lineTo(cx, maxY-5);
-  ctx.moveTo(cx-6, maxY-14); ctx.lineTo(cx, maxY-5); ctx.lineTo(cx+6, maxY-14);
+  ctx.moveTo(acx, minY+5); ctx.lineTo(acx, maxY-5);
+  ctx.moveTo(acx-6, maxY-14); ctx.lineTo(acx, maxY-5); ctx.lineTo(acx+6, maxY-14);
   ctx.stroke();
 
-  ctx.restore();
+  ctx.restore(); // end clip
 
   // Outline
   ctx.beginPath();
@@ -1372,15 +1403,18 @@ function drawStairs(ctx, el, ppi, sel) {
   // Dim label
   const w = Math.max(...el.points.map(p=>p.x)) - Math.min(...el.points.map(p=>p.x));
   const d = Math.max(...el.points.map(p=>p.y)) - Math.min(...el.points.map(p=>p.y));
-  const lbl = fmtFt(w) + ' × ' + fmtFt(d) + ' · ' + steps + ' steps';
+  const rot = el.rotation ? ` · ${el.rotation}°` : '';
+  const lbl = fmtFt(w) + ' × ' + fmtFt(d) + ' · ' + steps + ' steps' + rot;
   ctx.font = 'bold 9px Segoe UI,sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const tw = ctx.measureText(lbl).width + 8;
-  ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(cx - tw/2, cy - 7, tw, 14);
-  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillText(lbl, cx, cy);
+  ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(acx - tw/2, acy - 7, tw, 14);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillText(lbl, acx, acy);
 
-  // Vertex handles when selected (same as deck)
-  if (sel) drawVertexHandles(ctx, el.points, ppi);
+  ctx.restore(); // end rotation transform
+
+  // Vertex handles drawn OUTSIDE rotation transform so dots appear at rotated positions
+  if (sel) drawVertexHandlesRotated(ctx, el.points, ppi, angle, canvasCx, canvasCy);
 }
 
 // Hit-test for stairs: transform click into stair local space, test against rect
@@ -1986,6 +2020,59 @@ function drawMergedDeck(ctx, el, ppi, sel) {
   if (sel) drawVertexHandles(ctx, el.outline, ppi);
 }
 
+function drawDeckBand(ctx, el, ppi, sel) {
+  // Find the parent deck to get its outline for clipping
+  const deck = plan.elements.find(e=>e.id===el.deckId)
+             || plan.elements.find(e=>e.type==='merged-deck'||e.type==='deck');
+  if (!deck) return;
+
+  const pts = (deck.outline||deck.points).map(p=>({x:p.x*ppi+plan.panX, y:p.y*ppi+plan.panY}));
+  const minX = Math.min(...pts.map(p=>p.x));
+  const maxX = Math.max(...pts.map(p=>p.x));
+
+  // Band is 2 boards = 7 inches thick
+  const bandH = 7 * ppi;
+  const by = el.y * ppi + plan.panY;
+  const color = el.color || deck.borderColor || deck.color || '#8B7260';
+
+  // Clip to deck polygon
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.clip();
+
+  // Fill the band
+  ctx.fillStyle = color;
+  ctx.fillRect(minX, by, maxX - minX, bandH);
+
+  // Seam between the two boards
+  ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(minX, by + bandH/2); ctx.lineTo(maxX, by + bandH/2);
+  ctx.stroke();
+
+  // Selection outline
+  if (sel) {
+    ctx.strokeStyle = '#4FC3F7'; ctx.lineWidth = 2;
+    ctx.setLineDash([5, 3]);
+    ctx.strokeRect(minX, by, maxX - minX, bandH);
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
+
+  // Drag grip indicator when selected
+  if (sel) {
+    const cx = (minX + maxX) / 2, cy = by + bandH / 2;
+    ctx.fillStyle = '#4FC3F7';
+    ctx.fillRect(cx - 14, cy - 5, 28, 10);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('drag ↕', cx, cy);
+  }
+}
+
 function drawMergedOutline(ctx, pts, ppi) {
   const cpts = pts.map(p=>({x:p.x*ppi+plan.panX,y:p.y*ppi+plan.panY}));
   ctx.beginPath();
@@ -2021,6 +2108,27 @@ function drawVertexHandles(ctx, points, ppi) {
     const a=points[i], b=points[(i+1)%points.length];
     const mx=(a.x+b.x)/2*ppi+plan.panX, my=(a.y+b.y)/2*ppi+plan.panY;
     ctx.fillStyle='#4FC3F7'; ctx.beginPath(); ctx.arc(mx,my,4,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.stroke();
+  }
+}
+
+// Same as above but rotates each point around (rcx,rcy) by angle radians
+function drawVertexHandlesRotated(ctx, points, ppi, angle, rcx, rcy) {
+  function rotPt(px, py) {
+    const cos=Math.cos(angle), sin=Math.sin(angle);
+    return { x: cos*(px-rcx)-sin*(py-rcy)+rcx, y: sin*(px-rcx)+cos*(py-rcy)+rcy };
+  }
+  points.forEach(p => {
+    const raw = {x:p.x*ppi+plan.panX, y:p.y*ppi+plan.panY};
+    const r = rotPt(raw.x, raw.y);
+    ctx.fillStyle='#fff'; ctx.fillRect(r.x-5,r.y-5,10,10);
+    ctx.strokeStyle='#4FC3F7'; ctx.lineWidth=1.5; ctx.strokeRect(r.x-5,r.y-5,10,10);
+  });
+  for(let i=0;i<points.length;i++){
+    const a=points[i], b=points[(i+1)%points.length];
+    const mx=(a.x+b.x)/2*ppi+plan.panX, my=(a.y+b.y)/2*ppi+plan.panY;
+    const r = rotPt(mx, my);
+    ctx.fillStyle='#4FC3F7'; ctx.beginPath(); ctx.arc(r.x,r.y,4,0,Math.PI*2); ctx.fill();
     ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.stroke();
   }
 }
@@ -2096,15 +2204,27 @@ function hitTestVertex(cx, cy, el, ppi) {
   const HIT = isTouchDevice ? 14 : 8;
   const pts = el.points || el.outline;
   if (!pts) return null;
+
+  // For rotated stairs, rotate the click point into local (unrotated) space
+  let tcx = cx, tcy = cy;
+  if (el.type === 'stairs' && el.rotation) {
+    const angle = el.rotation * Math.PI / 180;
+    const rawPts = pts.map(p=>({x:p.x*ppi+plan.panX, y:p.y*ppi+plan.panY}));
+    const ocx = rawPts.reduce((s,p)=>s+p.x,0)/rawPts.length;
+    const ocy = rawPts.reduce((s,p)=>s+p.y,0)/rawPts.length;
+    const cos = Math.cos(-angle), sin = Math.sin(-angle);
+    tcx = cos*(cx-ocx) - sin*(cy-ocy) + ocx;
+    tcy = sin*(cx-ocx) + cos*(cy-ocy) + ocy;
+  }
+
   for(let i=0;i<pts.length;i++){
     const vx=pts[i].x*ppi+plan.panX, vy=pts[i].y*ppi+plan.panY;
-    if (Math.abs(cx-vx)<HIT && Math.abs(cy-vy)<HIT) return {idx:i, isInsert:false};
+    if (Math.abs(tcx-vx)<HIT && Math.abs(tcy-vy)<HIT) return {idx:i, isInsert:false};
   }
-  // Mid-points for insert
   for(let i=0;i<pts.length;i++){
     const a=pts[i], b=pts[(i+1)%pts.length];
     const mx=(a.x+b.x)/2*ppi+plan.panX, my=(a.y+b.y)/2*ppi+plan.panY;
-    if (Math.abs(cx-mx)<HIT && Math.abs(cy-my)<HIT) return {idx:i, isInsert:true};
+    if (Math.abs(tcx-mx)<HIT && Math.abs(tcy-my)<HIT) return {idx:i, isInsert:true};
   }
   return null;
 }
@@ -2112,6 +2232,18 @@ function hitTestVertex(cx, cy, el, ppi) {
 function hitTestElement(cx, cy, ppi) {
   const pos = canvasToInches(cx, cy);
   const ix=pos.x, iy=pos.y;
+  // deck-band checked first — sits on top of the deck visually
+  for(let i=plan.elements.length-1;i>=0;i--){
+    const el=plan.elements[i];
+    if (el.type==='deck-band') {
+      const deck = plan.elements.find(e=>e.id===el.deckId)||plan.elements.find(e=>e.type==='merged-deck'||e.type==='deck');
+      if (!deck) continue;
+      const pts = deck.outline||deck.points;
+      const minX = Math.min(...pts.map(p=>p.x)), maxX = Math.max(...pts.map(p=>p.x));
+      const bandH = 7; // 7 inches
+      if (ix>=minX && ix<=maxX && iy>=el.y && iy<=el.y+bandH) return el.id;
+    }
+  }
   for(let i=plan.elements.length-1;i>=0;i--){
     const el=plan.elements[i];
     if (el.type==='deck'||el.type==='merged-deck') {
@@ -2122,10 +2254,20 @@ function hitTestElement(cx, cy, ppi) {
     } else if (el.type==='pergola') {
       if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.height) return el.id;
     } else if (el.type==='stairs') {
-      // Stairs now have polygon points — same hit-test as deck
       const pts = el.points;
       if (pts && pts.length >= 3) {
-        if (pointInPolygon(ix, iy, pts)) return el.id;
+        // Rotate click into stair local space if rotated
+        let lix = ix, liy = iy;
+        if (el.rotation) {
+          const angle = el.rotation * Math.PI / 180;
+          const rawPts = pts.map(p=>({x:p.x, y:p.y}));
+          const ocx = rawPts.reduce((s,p)=>s+p.x,0)/rawPts.length;
+          const ocy = rawPts.reduce((s,p)=>s+p.y,0)/rawPts.length;
+          const cos = Math.cos(-angle), sin = Math.sin(-angle);
+          lix = cos*(ix-ocx) - sin*(iy-ocy) + ocx;
+          liy = sin*(ix-ocx) + cos*(iy-ocy) + ocy;
+        }
+        if (pointInPolygon(lix, liy, pts)) return el.id;
       } else {
         if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.depth) return el.id;
       }
@@ -2237,6 +2379,8 @@ function onMouseDown(e) {
         const cx=pts.reduce((s,p)=>s+p.x,0)/pts.length;
         const cy=pts.reduce((s,p)=>s+p.y,0)/pts.length;
         dragOffX=ipos.x-cx; dragOffY=ipos.y-cy;
+      } else if (el.type==='deck-band') {
+        dragOffY=ipos.y-el.y; dragOffX=0;
       } else if (el.type==='railing') {
         dragOffX=ipos.x-el.startX; dragOffY=ipos.y-el.startY;
       } else {
@@ -2311,6 +2455,17 @@ function onMouseMove(e) {
         el.x=Math.min(...xs); el.y=Math.min(...ys);
         el.width=Math.max(...xs)-el.x; el.depth=Math.max(...ys)-el.y;
       }
+    } else if(el.type==='deck-band'){
+      // Vertical drag only — clamp inside parent deck
+      const deck = plan.elements.find(e=>e.id===el.deckId)||plan.elements.find(e=>e.type==='merged-deck'||e.type==='deck');
+      let newY = snapToGrid(ipos.y - dragOffY);
+      if (deck) {
+        const pts = deck.outline||deck.points;
+        const minY = Math.min(...pts.map(p=>p.y));
+        const maxY = Math.max(...pts.map(p=>p.y));
+        newY = Math.max(minY, Math.min(maxY - 7, newY));
+      }
+      el.y = newY;
     } else if(el.type==='railing'){
       const lenX=el.endX-el.startX, lenY=el.endY-el.startY;
       const newSX=snapToGrid(ipos.x-dragOffX), newSY=snapToGrid(ipos.y-dragOffY);
@@ -2333,7 +2488,8 @@ function onMouseMove(e) {
     }
   }
   const hit=hitTestElement(pos.x,pos.y,ppi);
-  canvas.style.cursor=hit?'move':'crosshair';
+  const hitEl = hit ? plan.elements.find(e=>e.id===hit) : null;
+  canvas.style.cursor = hitEl?.type==='deck-band' ? 'ns-resize' : hit ? 'move' : 'crosshair';
 }
 
 function onMouseUp(e) {
@@ -2371,7 +2527,8 @@ function onKeyDown(e) {
   }
   if (e.key==='r'||e.key==='R') {
     const el=plan.elements.find(e=>e.id===plan.selectedId);
-    if (el&&el.type==='furniture') { rotateFurniture(10); }
+    if (el?.type==='furniture') rotateFurniture(10);
+    else if (el?.type==='stairs') rotateStairs(10);
   }
   if (e.key==='Escape') { plan.selectedId=null; redraw(); renderProps(); }
 
@@ -2769,6 +2926,13 @@ function renderProps() {
       <div class="prop-row"><label>Depth (in)</label><input type="number" value="${Math.round(el.depth)}" oninput="updateProp('depth',+this.value)"step="1"/></div>
       <div class="prop-row"><label>Steps</label><input type="number" value="${el.steps||4}" oninput="updateProp('steps',+this.value)" min="1" max="20"step="1"/></div>
     </div>
+    <div class="prop-row" style="margin-top:4px"><label>Rotation</label>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="btn" onclick="rotateStairs(-10)" style="font-size:13px;padding:2px 10px" title="Rotate -10°">↺ −10°</button>
+        <button class="btn" onclick="rotateStairs(10)" style="font-size:13px;padding:2px 10px" title="Rotate +10°">↻ +10°</button>
+        <span id="stairs-rotation-display" style="font-size:11px;color:var(--text2);min-width:32px;text-align:right">${el.rotation||0}°</span>
+      </div>
+    </div>
     <div style="font-size:10px;color:var(--text3);margin-top:2px">Drag corner/edge dots to reshape</div>`;
   } else if(el.type==='railing'){
     html+=`<div class="prop-row"><label>Color</label>
@@ -2853,9 +3017,13 @@ function renderProps() {
     </div>`;
   } else if(el.type==='fire-pit'){
     html+=`<div class="prop-row"><label>Diameter (in)</label><input type="number" value="${Math.round(el.diameter||46)}" oninput="updateProp('diameter',+this.value)"step="1"/></div>`;
+  } else if(el.type==='deck-band'){
+    html+=`<div style="font-size:11px;color:var(--text2);margin-bottom:6px">Horizontal band · 7" tall (2 boards)<br>Drag up/down to position. Color matches deck border.</div>`;
+    html+=`<div class="prop-row"><label>Y Position (in)</label><input type="number" value="${Math.round(el.y)}" oninput="updateProp('y',+this.value)"step="1"/></div>`;
   }
 
-  // Position
+  // Position — skip for deck-band (Y only, already shown above)
+  if (el.type !== 'deck-band') {
   let px=el.x, py=el.y;
   if(el.type==='deck'||el.type==='merged-deck'){
     const pts=el.points||el.outline;
@@ -2867,6 +3035,7 @@ function renderProps() {
     <div class="prop-row"><label>X (in)</label><input type="number" value="${Math.round(px)}" oninput="updatePropPos('x',+this.value)"step="1"/></div>
     <div class="prop-row"><label>Y (in)</label><input type="number" value="${Math.round(py)}" oninput="updatePropPos('y',+this.value)"step="1"/></div>
   </div>`;
+  }
 
   html+=`<div class="prop-actions" style="margin-top:6px">
     <button class="btn btn-danger" style="font-size:11px" onclick="deleteSelected()">🗑 Delete</button>
@@ -2890,6 +3059,7 @@ function getDimBadge(el) {
   if(el.type==='post'||el.type==='pillar') return `${el.sizeInches}"×${el.sizeInches}"`;
   if(el.type==='pergola'||el.type==='hot-tub') return `${fmtFt(el.width)} × ${fmtFt(el.height)}`;
   if(el.type==='fire-pit') return `⌀${fmtFt(el.diameter||46)}`;
+  if(el.type==='deck-band') return `7" band`;
   return '';
 }
 
@@ -2900,6 +3070,15 @@ function rotateFurniture(degrees) {
   if (!el || el.type !== 'furniture') return;
   el.rotation = ((el.rotation||0) + degrees + 360) % 360;
   const disp = document.getElementById('rotation-display');
+  if (disp) disp.textContent = el.rotation + '°';
+  setDirty(true); redraw();
+}
+
+function rotateStairs(degrees) {
+  const el = plan.elements.find(e=>e.id===plan.selectedId);
+  if (!el || el.type !== 'stairs') return;
+  el.rotation = ((el.rotation||0) + degrees + 360) % 360;
+  const disp = document.getElementById('stairs-rotation-display');
   if (disp) disp.textContent = el.rotation + '°';
   setDirty(true); redraw();
 }
@@ -3262,7 +3441,7 @@ add patio 15x12 south
 ✓ Added a 20×16 deck with a 15×12 patio on the south side`;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -3273,11 +3452,18 @@ add patio 15x12 south
       })
     });
     const data = await response.json();
-    const reply = data.content?.[0]?.text || '';
 
     thinkDiv.remove();
     isThinking = false;
     if (btn) { btn.disabled = false; btn.textContent = 'Send'; }
+
+    // Handle API key not configured
+    if (data.error) {
+      addChatMsg('⚠️ ' + data.error, 'err');
+      return;
+    }
+
+    const reply = data.content?.[0]?.text || '';
 
     if (!reply) { addChatMsg('No response from AI.', 'err'); return; }
 
