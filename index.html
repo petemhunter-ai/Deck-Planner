@@ -2455,11 +2455,19 @@ function onMouseMove(e) {
       pts[dragVertexIdx].x = snapToGrid(lx);
       pts[dragVertexIdx].y = snapToGrid(ly);
 
-      // Keep bounding box in sync for stairs
-      if (el.type==='stairs' && el.points) {
-        const xs=el.points.map(p=>p.x), ys=el.points.map(p=>p.y);
-        el.x=Math.min(...xs); el.y=Math.min(...ys);
-        el.width=Math.max(...xs)-el.x; el.depth=Math.max(...ys)-el.y;
+      // STAIRS: depth is fixed — only X (width axis) can change on corner drag.
+      // Each corner's Y is locked to either top row or bottom row.
+      if (el.type === 'stairs' && el.points) {
+        const allY = el.points.map(p=>p.y);
+        const minY = Math.min(...allY), maxY = Math.max(...allY);
+        const mid = (minY + maxY) / 2;
+        // Snap this corner's Y back to whichever row it belongs to
+        pts[dragVertexIdx].y = (ly < mid) ? minY : maxY;
+        // Keep bounding box in sync
+        const xs=el.points.map(p=>p.x);
+        el.x=Math.min(...xs);
+        el.width=Math.max(...xs)-el.x;
+        // depth stays as set in props — don't recompute from Y
       }
       setDirty(true); redraw(); return;
     }
@@ -2847,6 +2855,29 @@ function ptInPoly(px,py,pts) {
   return inside;
 }
 
+// Merge two polygons that share a full edge (no intersection points, exact shared boundary)
+function sharedEdgeUnion(subj, clip) {
+  const SNAP = 3; // inches tolerance
+  for (let i = 0; i < subj.length; i++) {
+    const sa = subj[i], sb = subj[(i+1)%subj.length];
+    for (let j = 0; j < clip.length; j++) {
+      const ca = clip[j], cb = clip[(j+1)%clip.length];
+      // Shared edge: subj goes sa→sb, clip goes ca→cb where ca≈sb and cb≈sa
+      if (Math.hypot(sa.x-cb.x,sa.y-cb.y)<SNAP && Math.hypot(sb.x-ca.x,sb.y-ca.y)<SNAP) {
+        const result = [];
+        // subj vertices 0..i (inclusive of sa)
+        for (let k = 0; k <= i; k++) result.push({...subj[k]});
+        // clip vertices from j+1, skipping ca and cb (the shared edge endpoints)
+        for (let k = 1; k < clip.length - 1; k++) result.push({...clip[(j+1+k)%clip.length]});
+        // remaining subj vertices from i+1 onward
+        for (let k = i+1; k < subj.length; k++) result.push({...subj[k]});
+        return simplifyPolygon(result);
+      }
+    }
+  }
+  return null;
+}
+
 function unionTwoPolygons(subj, clip) {
   // Insert intersection points into both polygons
   function insertIntersections(poly1, poly2) {
@@ -2872,6 +2903,9 @@ function unionTwoPolygons(subj, clip) {
   // If no intersections, check containment
   const sInters = s.filter(p=>p.inter);
   if (sInters.length === 0) {
+    // Try shared-edge merge first (polygons touching along a full edge)
+    const shared = sharedEdgeUnion(subj, clip) || sharedEdgeUnion(clip, subj);
+    if (shared) return shared;
     if (ptInPoly(subj[0].x, subj[0].y, clip)) return clip; // subj inside clip
     if (ptInPoly(clip[0].x, clip[0].y, subj)) return subj; // clip inside subj
     // Check if adjacent (touching) — just concatenate the outlines
