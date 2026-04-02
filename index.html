@@ -356,13 +356,19 @@ canvas{display:block;cursor:crosshair}
         <button class="btn-merge" onclick="document.getElementById('merge-banner').style.display='none'">✕</button>
       </div>
 
-      <!-- CANVAS CHAT BAR — always visible at bottom of plan, all screen sizes -->
+      <!-- CANVAS CHAT BAR — always visible, pinned to bottom of plan canvas -->
       <div id="canvas-chat-bar">
-        <div class="ai-dot" style="flex-shrink:0"></div>
-        <input type="text" id="canvas-chat-input"
-          placeholder="Tell me what to build… e.g. Add a 20×16 deck with stairs south"
-          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-        <button id="canvas-chat-btn" onclick="sendCanvasChat()">Send</button>
+        <span id="canvas-chat-dot" style="width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0"></span>
+        <input id="canvas-chat-input" type="text"
+               placeholder="Describe what to build — e.g.  Add a 20×16 deck with stairs south 4 steps"
+               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+               style="flex:1;height:40px;font-size:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(79,195,247,0.35);border-radius:8px;padding:0 14px;color:#e8ecf4;outline:none;min-width:0"
+               onfocus="this.style.borderColor='rgba(79,195,247,0.8)'"
+               onblur="this.style.borderColor='rgba(79,195,247,0.35)'"
+        />
+        <button id="canvas-chat-btn"
+                style="height:40px;padding:0 20px;border-radius:8px;background:rgba(79,195,247,0.15);color:#4FC3F7;border:1px solid rgba(79,195,247,0.5);font-size:14px;font-weight:600;cursor:pointer;flex-shrink:0;white-space:nowrap"
+                onclick="sendCanvasChat()">Send</button>
       </div>
     </div>
 
@@ -1444,101 +1450,110 @@ function drawPatio(ctx, el, ppi, sel) {
 }
 
 function drawStairs(ctx, el, ppi, sel) {
-  const steps = el.steps || 4;
-
-  // Get the polygon points — either custom shaped or default rectangle
-  const pts = getStairPoints(el, ppi);
-
-  // Bounding box for step lines and label
-  const xs = pts.map(p=>p.x), ys = pts.map(p=>p.y);
-  const minX=Math.min(...xs), maxX=Math.max(...xs);
-  const minY=Math.min(...ys), maxY=Math.max(...ys);
-  const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+  const steps = Math.max(1, el.steps || 4);
+  const angle = (el.angle || 0) * Math.PI / 180;
+  const bx = el.x * ppi + plan.panX;
+  const by = el.y * ppi + plan.panY;
+  const w  = el.width  * ppi;
+  const d  = el.depth  * ppi;
+  const cx = bx + w/2, cy = by + d/2;
 
   ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+  ctx.translate(-cx, -cy);
 
-  // Clip to stair polygon
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
-  ctx.closePath();
+  // Fill
   ctx.fillStyle = el.color || '#8B7260';
-  ctx.fill();
-  ctx.clip();
+  ctx.fillRect(bx, by, w, d);
 
-  // Step lines — horizontal bands across the bounding height
-  const stepH = (maxY-minY)/steps;
-  ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=1;
-  for (let i=1;i<steps;i++) {
-    const sy = minY + i*stepH;
-    ctx.beginPath(); ctx.moveTo(minX-2, sy); ctx.lineTo(maxX+2, sy); ctx.stroke();
-    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=0.5;
-    ctx.beginPath(); ctx.moveTo(minX-2, sy+1); ctx.lineTo(maxX+2, sy+1); ctx.stroke();
-    ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=1;
+  // Step nosing lines — evenly spaced across depth
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < steps; i++) {
+    const sy = by + (i / steps) * d;
+    ctx.beginPath(); ctx.moveTo(bx, sy); ctx.lineTo(bx + w, sy); ctx.stroke();
   }
 
-  // Descent arrow
-  ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(cx,minY+4); ctx.lineTo(cx,maxY-4);
-  ctx.moveTo(cx-6,maxY-12); ctx.lineTo(cx,maxY-4); ctx.lineTo(cx+6,maxY-12);
-  ctx.stroke();
-
-  ctx.restore();
-
-  // Polygon outline
+  // Descent arrow (top = landing, bottom = ground)
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 1.5;
+  const ax = bx + w/2;
   ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
-  ctx.closePath();
-  ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.35)';
-  ctx.lineWidth = sel ? 2 : 1;
+  ctx.moveTo(ax, by + 6); ctx.lineTo(ax, by + d - 6);
+  ctx.moveTo(ax - 7, by + d - 16); ctx.lineTo(ax, by + d - 6); ctx.lineTo(ax + 7, by + d - 16);
   ctx.stroke();
 
-  // Label
-  const w=maxX-minX, d=maxY-minY;
-  const lbl = `${fmtFt(el.width||w/ppi)}×${fmtFt(el.depth||d/ppi)} · ${steps} steps${el.angle?` · ${el.angle}°`:''}`;
-  ctx.font='bold 9px Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  const tw=ctx.measureText(lbl).width+8;
-  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(cx-tw/2,cy-7,tw,14);
-  ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fillText(lbl,cx,cy);
+  // Selection outline
+  ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.35)';
+  ctx.lineWidth   = sel ? 2 : 1;
+  ctx.strokeRect(bx, by, w, d);
 
-  // Selection vertex handles (same as deck)
+  // Dim label
+  const lbl = fmtFt(el.width) + '×' + fmtFt(el.depth) + ' · ' + steps + ' steps' + (el.angle ? ' · ' + el.angle + '°' : '');
+  ctx.font = 'bold 9px Segoe UI,sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const tw = ctx.measureText(lbl).width + 8;
+  ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(cx - tw/2, cy - 7, tw, 14);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillText(lbl, cx, cy);
+
+  ctx.restore(); // end rotation
+
+  // Resize handles when selected
   if (sel) {
-    drawVertexHandles(ctx, el.points || getStairPointsInches(el), ppi);
+    // Draw rotated resize handles
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(angle); ctx.translate(-cx, -cy);
+    const HIT = isTouchDevice ? 10 : 7;
+    const corners = [
+      {x:bx,   y:by},   {x:bx+w, y:by},
+      {x:bx+w, y:by+d}, {x:bx,   y:by+d}
+    ];
+    corners.forEach(p => {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(p.x - HIT/2, p.y - HIT/2, HIT, HIT);
+      ctx.strokeStyle = '#4FC3F7'; ctx.lineWidth = 1.5;
+      ctx.strokeRect(p.x - HIT/2, p.y - HIT/2, HIT, HIT);
+    });
+    ctx.restore();
   }
 }
 
-// Returns screen-space polygon points for stair rendering
-function getStairPoints(el, ppi) {
-  if (el.points && el.points.length >= 3) {
-    return el.points.map(p=>({x:p.x*ppi+plan.panX, y:p.y*ppi+plan.panY}));
+// Hit-test for stairs: transform click into stair local space, test against rect
+function stairHitTest(el, ix, iy) {
+  const angle = (el.angle || 0) * Math.PI / 180;
+  const scx = el.x + el.width/2, scy = el.y + el.depth/2;
+  let rx = ix, ry = iy;
+  if (angle !== 0) {
+    const cos = Math.cos(-angle), sin = Math.sin(-angle);
+    rx = cos*(ix-scx) - sin*(iy-scy) + scx;
+    ry = sin*(ix-scx) + cos*(iy-scy) + scy;
   }
-  // Default rectangle — apply angle rotation
-  const bx=el.x*ppi+plan.panX, by=el.y*ppi+plan.panY;
-  const w=el.width*ppi, d=el.depth*ppi;
-  const cx=bx+w/2, cy=by+d/2;
-  const angle=(el.angle||0)*Math.PI/180;
-  const corners=[{x:bx,y:by},{x:bx+w,y:by},{x:bx+w,y:by+d},{x:bx,y:by+d}];
-  if (angle===0) return corners;
-  const cos=Math.cos(angle), sin=Math.sin(angle);
-  return corners.map(p=>({
-    x: cos*(p.x-cx)-sin*(p.y-cy)+cx,
-    y: sin*(p.x-cx)+cos*(p.y-cy)+cy
-  }));
+  return rx >= el.x && rx <= el.x + el.width && ry >= el.y && ry <= el.y + el.depth;
 }
 
-// Returns inch-space points for vertex handles
-function getStairPointsInches(el) {
-  if (el.points && el.points.length >= 3) return el.points;
-  const angle=(el.angle||0)*Math.PI/180;
-  const scx=el.x+el.width/2, scy=el.y+el.depth/2;
-  const corners=[{x:el.x,y:el.y},{x:el.x+el.width,y:el.y},{x:el.x+el.width,y:el.y+el.depth},{x:el.x,y:el.y+el.depth}];
-  if (angle===0) return corners;
-  const cos=Math.cos(angle), sin=Math.sin(angle);
-  return corners.map(p=>({
-    x: cos*(p.x-scx)-sin*(p.y-scy)+scx,
-    y: sin*(p.x-scx)+cos*(p.y-scy)+scy
-  }));
+// Hit-test for rotated stair corner handles (returns handle name or null)
+function stairHandleHitTest(px, py, el, ppi) {
+  const angle = (el.angle || 0) * Math.PI / 180;
+  const bx = el.x*ppi+plan.panX, by = el.y*ppi+plan.panY;
+  const w = el.width*ppi, d = el.depth*ppi;
+  const cx = bx+w/2, cy = by+d/2;
+  const HIT = isTouchDevice ? 14 : 9;
+  // Corners in local space
+  const handles = [
+    {name:'nw', lx:bx,   ly:by},
+    {name:'ne', lx:bx+w, ly:by},
+    {name:'se', lx:bx+w, ly:by+d},
+    {name:'sw', lx:bx,   ly:by+d}
+  ];
+  for (const h of handles) {
+    // Rotate handle position by angle around center
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    const rx = cos*(h.lx-cx) - sin*(h.ly-cy) + cx;
+    const ry = sin*(h.lx-cx) + cos*(h.ly-cy) + cy;
+    if (Math.abs(px-rx) < HIT && Math.abs(py-ry) < HIT) return h.name;
+  }
+  return null;
 }
 
 function drawRailing(ctx, el, ppi, sel) {
@@ -2222,21 +2237,8 @@ function hitTestElement(cx, cy, ppi) {
     } else if (el.type==='pergola') {
       if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.height) return el.id;
     } else if (el.type==='stairs') {
-      // Use polygon points if shaped, otherwise rotated rect
-      if (el.points && el.points.length >= 3) {
-        if (pointInPolygon(ix, iy, el.points)) return el.id;
-      } else {
-        const angle = (el.angle||0) * Math.PI/180;
-        if (angle === 0) {
-          if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.depth) return el.id;
-        } else {
-          const scx = el.x + el.width/2, scy = el.y + el.depth/2;
-          const cos = Math.cos(-angle), sin = Math.sin(-angle);
-          const rx = cos*(ix-scx) - sin*(iy-scy) + scx;
-          const ry = sin*(ix-scx) + cos*(iy-scy) + scy;
-          if (rx>=el.x&&rx<=el.x+el.width&&ry>=el.y&&ry<=el.y+el.depth) return el.id;
-        }
-      }
+      // Use dedicated rotated hit-test
+      if (stairHitTest(el, ix, iy)) return el.id;
     } else if (el.type==='furniture') {
       // Account for rotation
       const angle = (el.rotation||0) * Math.PI/180;
@@ -2296,19 +2298,24 @@ function onMouseDown(e) {
   const clickIsOnSelected = selEl && hitId === plan.selectedId;
 
   if (selEl && clickIsOnSelected) {
-    // Vertex drag for deck AND stairs (stairs can be polygon-shaped)
-    if (selEl.type==='deck'||selEl.type==='merged-deck'||selEl.type==='stairs') {
-      // For stairs: initialize points array from rectangle corners on first vertex drag
-      if (selEl.type==='stairs' && (!selEl.points || selEl.points.length < 3)) {
-        selEl.points = getStairPointsInches(selEl);
+    // Stair corner handles (rotated resize)
+    if (selEl.type === 'stairs') {
+      const hname = stairHandleHitTest(pos.x, pos.y, selEl, ppi);
+      if (hname) {
+        isResizing = true; resizeId = selEl.id; resizeHandle = hname;
+        const ipos = canvasToInches(pos.x, pos.y);
+        resizeStart = { mx:ipos.x, my:ipos.y, x:selEl.x, y:selEl.y, w:selEl.width, h:selEl.depth };
+        return;
       }
+    }
+    // Deck / merged-deck vertex handles
+    if (selEl.type==='deck'||selEl.type==='merged-deck') {
       const hit = hitTestVertex(pos.x, pos.y, selEl, ppi);
       if (hit) {
         if (hit.isInsert) {
           const pts = selEl.points||selEl.outline;
           const a=pts[hit.idx], b=pts[(hit.idx+1)%pts.length];
-          const newPt = {x:(a.x+b.x)/2, y:(a.y+b.y)/2};
-          pts.splice(hit.idx+1, 0, newPt);
+          pts.splice(hit.idx+1, 0, {x:(a.x+b.x)/2, y:(a.y+b.y)/2});
           isDragVertex=true; dragVertexId=selEl.id; dragVertexIdx=hit.idx+1;
         } else {
           isDragVertex=true; dragVertexId=selEl.id; dragVertexIdx=hit.idx;
@@ -2316,7 +2323,7 @@ function onMouseDown(e) {
         setDirty(true); return;
       }
     }
-    // Resize handles
+    // Standard resize handles (patio, pergola, hot-tub, fire-pit)
     const rh = hitTestResizeHandle(pos.x, pos.y, selEl, ppi);
     if (rh) {
       isResizing=true; resizeId=selEl.id; resizeHandle=rh.name;
@@ -2383,25 +2390,40 @@ function onMouseMove(e) {
     const el=plan.elements.find(e=>e.id===resizeId);
     if(!el) return;
     const ipos=canvasToInches(pos.x,pos.y);
-    const dx=ipos.x-resizeStart.mx, dy=ipos.y-resizeStart.my;
-    let nx=resizeStart.x, ny=resizeStart.y, nw=resizeStart.w, nh=resizeStart.h;
-    if(resizeHandle.includes('e')) nw=Math.max(12,resizeStart.w+dx);
-    if(resizeHandle.includes('w')){ nw=Math.max(12,resizeStart.w-dx); nx=resizeStart.x+dx; }
-    if(resizeHandle.includes('s')) nh=Math.max(12,resizeStart.h+dy);
-    if(resizeHandle.includes('n')){ nh=Math.max(12,resizeStart.h-dy); ny=resizeStart.y+dy; }
-    nw=snapToGrid(nw); nh=snapToGrid(nh); nx=snapToGrid(nx); ny=snapToGrid(ny);
-    if(el.type==='patio'||el.type==='pergola'||el.type==='hot-tub'){
-      el.x=nx; el.y=ny; el.width=nw; el.height=nh;
-    } else if(el.type==='stairs'){
-      el.x=nx; el.y=ny; el.width=nw; el.depth=nh;
-    } else if(el.type==='furniture'){
-      el.x=nx; el.y=ny; el.width=nw; el.depth=nh;
-    } else if(el.type==='fire-pit'){
-      el.x=nx+nw/2; el.y=ny+nh/2; el.diameter=Math.max(nw,nh);
+
+    if (el.type === 'stairs') {
+      // Resize in rotated local space
+      const angle = (el.angle||0) * Math.PI/180;
+      const cos = Math.cos(-angle), sin = Math.sin(-angle);
+      // Rotate the drag delta into stair local space
+      const rawDx = ipos.x - resizeStart.mx, rawDy = ipos.y - resizeStart.my;
+      const ldx = cos*rawDx - sin*rawDy;
+      const ldy = sin*rawDx + cos*rawDy;
+      let nx=resizeStart.x, ny=resizeStart.y, nw=resizeStart.w, nh=resizeStart.h;
+      if (resizeHandle==='se'){ nw=Math.max(12,resizeStart.w+ldx); nh=Math.max(12,resizeStart.h+ldy); }
+      else if (resizeHandle==='ne'){ nw=Math.max(12,resizeStart.w+ldx); nh=Math.max(12,resizeStart.h-ldy); ny=resizeStart.y+ldy; }
+      else if (resizeHandle==='sw'){ nw=Math.max(12,resizeStart.w-ldx); nh=Math.max(12,resizeStart.h+ldy); nx=resizeStart.x+ldx; }
+      else if (resizeHandle==='nw'){ nw=Math.max(12,resizeStart.w-ldx); nh=Math.max(12,resizeStart.h-ldy); nx=resizeStart.x+ldx; ny=resizeStart.y+ldy; }
+      el.x=snapToGrid(nx); el.y=snapToGrid(ny);
+      el.width=snapToGrid(nw); el.depth=snapToGrid(nh);
+      liveResizeDims={w:el.width,h:el.depth};
+      showDimOverlay(el.width,el.depth,pos.x,pos.y);
+    } else {
+      const dx=ipos.x-resizeStart.mx, dy=ipos.y-resizeStart.my;
+      let nx=resizeStart.x, ny=resizeStart.y, nw=resizeStart.w, nh=resizeStart.h;
+      if(resizeHandle.includes('e')) nw=Math.max(12,resizeStart.w+dx);
+      if(resizeHandle.includes('w')){ nw=Math.max(12,resizeStart.w-dx); nx=resizeStart.x+dx; }
+      if(resizeHandle.includes('s')) nh=Math.max(12,resizeStart.h+dy);
+      if(resizeHandle.includes('n')){ nh=Math.max(12,resizeStart.h-dy); ny=resizeStart.y+dy; }
+      nw=snapToGrid(nw); nh=snapToGrid(nh); nx=snapToGrid(nx); ny=snapToGrid(ny);
+      if(el.type==='patio'||el.type==='pergola'||el.type==='hot-tub'){
+        el.x=nx; el.y=ny; el.width=nw; el.height=nh;
+      } else if(el.type==='fire-pit'){
+        el.x=nx+nw/2; el.y=ny+nh/2; el.diameter=Math.max(nw,nh);
+      }
+      liveResizeDims = { w:nw, h:nh };
+      showDimOverlay(nw, nh, pos.x, pos.y);
     }
-    // Live dimension overlay
-    liveResizeDims = { w:nw, h:nh };
-    showDimOverlay(nw, nh, pos.x, pos.y);
     setDirty(true); redraw(); return;
   }
   if (isDragging && dragId) {
@@ -3493,79 +3515,115 @@ document.getElementById('chat-input').addEventListener('keydown', e=>{
 });
 
 // ============================================================
-// CANVAS CHAT BAR — always visible at bottom of plan
+// CANVAS CHAT BAR
 // ============================================================
+let canvasChatBusy = false;
+
 async function sendCanvasChat() {
   const inp = document.getElementById('canvas-chat-input');
   const btn = document.getElementById('canvas-chat-btn');
-  if (!inp || !btn || isThinking) return;
+  if (!inp || !btn || canvasChatBusy) return;
   const text = inp.value.trim();
-  if (!text) return;
-  inp.value = '';
-  inp.blur(); // dismiss iPad keyboard after send
+  if (!text) { inp.focus(); return; }
 
-  // Show in AI tab message history too
+  inp.value = '';
+
+  // Show in history
   addChatMsg(text, 'user');
   chatHistory.push({role:'user', content:text});
 
-  // Try local parser first
-  const localResult = parseCommand(text);
-  if (localResult.success) {
-    addChatMsg(localResult.msg, 'assistant');
-    chatHistory.push({role:'assistant', content:localResult.msg});
-    showMobileToast(localResult.msg);
+  // Try local command parser first (instant)
+  const local = parseCommand(text);
+  if (local.success) {
+    addChatMsg(local.msg, 'assistant');
+    chatHistory.push({role:'assistant', content:local.msg});
+    showToast(local.msg);
     return;
   }
-  if (!localResult.msg.startsWith("I didn't understand")) {
-    addChatMsg(localResult.msg, 'err');
-    showMobileToast(localResult.msg, true);
+  if (!local.msg.startsWith("I didn't understand")) {
+    addChatMsg(local.msg, 'err');
+    showToast(local.msg, true);
     return;
   }
 
-  // AI fallback
-  btn.classList.add('thinking');
+  // Fall back to AI
+  canvasChatBusy = true;
   btn.textContent = '…';
-  isThinking = true;
-  showMobileToast('Thinking…');
+  btn.style.opacity = '0.5';
+  showToast('Thinking…');
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        model:'claude-sonnet-4-20250514', max_tokens:512,
-        system:`You are an AI assistant for a Deck & Patio Planner. Translate requests into commands. Current plan: ${buildPlanSummary()}.
-COMMANDS: add deck WxH | add patio WxH [north/south/east/west] [with rounded NE/NW/SE/SW corner] | add stairs [direction] N steps | add railing [direction/around] | add pergola WxH | add hot tub WxH | add fire pit D | set deck color to COLOR | set deck border color to COLOR | merge deck segments | remove all TYPE | undo | clear plan
-Reply with commands (one per line) then ✓ explanation.`,
-        messages: chatHistory.slice(-8)
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 512,
+        system: `You are a Deck & Patio Planner assistant. Translate plain-English requests into one or more commands (one per line), then add a ✓ summary line.
+Current plan: ${buildPlanSummary()}
+
+COMMANDS:
+add deck WxH
+add patio WxH [north/south/east/west] [with rounded NE/NW/SE/SW corner]
+add stairs [north/south/east/west] N steps
+add railing [north/south/east/west/around]
+add pergola WxH
+add hot tub WxH
+add fire pit D
+set deck color to COLOR
+set deck border color to COLOR
+merge deck segments
+remove all TYPE
+undo
+clear plan`,
+        messages: chatHistory.slice(-10)
       })
     });
-    const data = await resp.json();
-    const reply = data.content?.[0]?.text || '';
-    const lines = reply.trim().split('\n').filter(l=>l.trim());
-    let explanation='', anySuccess=false;
+    const data = await res.json();
+    const reply = (data.content?.[0]?.text || '').trim();
+    const lines = reply.split('\n').filter(l=>l.trim());
+    let note = '', ok = false;
     for (const line of lines) {
-      if (line.startsWith('✓')) { explanation=line; continue; }
+      if (line.startsWith('✓')) { note = line; continue; }
       const r = parseCommand(line.trim());
-      if (r.success) anySuccess=true;
+      if (r.success) ok = true;
     }
-    const msg = explanation || (anySuccess ? '✓ Done!' : reply);
-    addChatMsg(msg, anySuccess?'assistant':'err');
+    const msg = note || (ok ? '✓ Done!' : reply);
+    addChatMsg(msg, ok ? 'assistant' : 'err');
     chatHistory.push({role:'assistant', content:msg});
-    showMobileToast(msg, !anySuccess);
+    showToast(msg, !ok);
   } catch(e) {
-    addChatMsg("Try: \"Add deck 20x16\" or type \"help\"", 'err');
-    showMobileToast("Couldn't connect to AI", true);
-  } finally {
-    isThinking = false;
-    btn.classList.remove('thinking');
-    btn.textContent = 'Send';
+    const msg = 'Try: "Add deck 20x16" or type "help"';
+    addChatMsg(msg, 'err');
+    showToast(msg, true);
   }
+
+  canvasChatBusy = false;
+  btn.textContent = 'Send';
+  btn.style.opacity = '1';
 }
 
-// Enter key on canvas chat bar
+// Brief overlay toast that fades after 2.5s
+function showToast(msg, isErr=false) {
+  let t = document.getElementById('app-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'app-toast';
+    t.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(15,20,28,0.92);color:#e8ecf4;padding:8px 20px;border-radius:20px;font-size:13px;font-weight:500;z-index:999;pointer-events:none;transition:opacity .3s;max-width:80vw;text-align:center;border:1px solid rgba(79,195,247,0.2)';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg.replace('✓ ','');
+  t.style.borderColor = isErr ? 'rgba(248,113,113,0.4)' : 'rgba(79,195,247,0.3)';
+  t.style.opacity = '1';
+  clearTimeout(t._t);
+  t._t = setTimeout(()=>{ t.style.opacity='0'; }, 2500);
+}
+
+// Enter key on canvas chat input
 document.getElementById('canvas-chat-input').addEventListener('keydown', e=>{
-  if (e.key==='Enter') { e.preventDefault(); sendCanvasChat(); }
+  if (e.key === 'Enter') { e.preventDefault(); sendCanvasChat(); }
 });
+
 function openCatalog(mfr) {
   catalogMfr = mfr;
   const isCC = mfr === 'casual-comfort';
