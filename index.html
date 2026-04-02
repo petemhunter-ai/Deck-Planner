@@ -70,7 +70,9 @@ canvas{display:block;cursor:crosshair}
 #props-panel .panel-body{padding:10px}
 .prop-row{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
 .prop-row label{font-size:11px;color:var(--text2);font-weight:500}
-.prop-row input,.prop-row select{width:100%;height:28px;font-size:12px}
+.prop-row input,.prop-row select{width:100%;height:36px;font-size:13px;border-radius:5px;padding:0 6px;background:var(--surface2);border:1px solid var(--border2);color:var(--text)}
+.prop-row input[type=number]{padding-right:2px} /* leave room for spinners */
+.prop-row input:focus,.prop-row select:focus{border-color:var(--primary);outline:none}
 .prop-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .swatches{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 .swatch{width:22px;height:22px;border-radius:4px;border:2px solid transparent;cursor:pointer;transition:transform .1s,border-color .1s;position:relative}
@@ -2081,14 +2083,17 @@ function getCanvasPos(e) {
 }
 
 function hitTestResizeHandle(cx, cy, el, ppi) {
-  // Furniture is NEVER resizable — fixed catalog dimensions
-  if (el.type==='furniture') return null;
+  // Furniture: fixed catalog dimensions, never resizable
+  // Stairs: width/depth/steps/angle all set via props panel — no handles
+  if (el.type==='furniture' || el.type==='stairs') return null;
   const HIT = isTouchDevice ? 16 : 8;
   let x, y, w, h;
-  if (el.type==='patio'||el.type==='pergola'||el.type==='hot-tub') {
-    x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=(el.depth||el.height)*ppi;
-  } else if (el.type==='stairs') {
-    x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.depth*ppi;
+  if (el.type==='patio') {
+    x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.height*ppi;
+  } else if (el.type==='pergola') {
+    x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.height*ppi;
+  } else if (el.type==='hot-tub') {
+    x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.height*ppi;
   } else if (el.type==='fire-pit') {
     const r=(el.diameter||46)/2*ppi; x=el.x*ppi+plan.panX-r; y=el.y*ppi+plan.panY-r; w=r*2; h=r*2;
   } else return null;
@@ -2125,10 +2130,35 @@ function hitTestElement(cx, cy, ppi) {
     if (el.type==='deck'||el.type==='merged-deck') {
       const pts = el.points||el.outline;
       if (pointInPolygon(ix,iy,pts)) return el.id;
-    } else if (el.type==='patio'||el.type==='pergola'||el.type==='hot-tub') {
+    } else if (el.type==='patio'||el.type==='hot-tub') {
       if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+(el.height||el.depth)) return el.id;
-    } else if (el.type==='stairs'||el.type==='furniture') {
-      if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+(el.depth||el.height)) return el.id;
+    } else if (el.type==='pergola') {
+      if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.height) return el.id;
+    } else if (el.type==='stairs') {
+      // Account for rotation — transform click point into stair local space
+      const angle = (el.angle||0) * Math.PI/180;
+      if (angle === 0) {
+        if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.depth) return el.id;
+      } else {
+        // Rotate click point around stair center
+        const scx = el.x + el.width/2, scy = el.y + el.depth/2;
+        const cos = Math.cos(-angle), sin = Math.sin(-angle);
+        const rx = cos*(ix-scx) - sin*(iy-scy) + scx;
+        const ry = sin*(ix-scx) + cos*(iy-scy) + scy;
+        if (rx>=el.x&&rx<=el.x+el.width&&ry>=el.y&&ry<=el.y+el.depth) return el.id;
+      }
+    } else if (el.type==='furniture') {
+      // Account for rotation
+      const angle = (el.rotation||0) * Math.PI/180;
+      if (angle === 0) {
+        if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.depth) return el.id;
+      } else {
+        const fcx = el.x + el.width/2, fcy = el.y + el.depth/2;
+        const cos = Math.cos(-angle), sin = Math.sin(-angle);
+        const rx = cos*(ix-fcx) - sin*(iy-fcy) + fcx;
+        const ry = sin*(ix-fcx) + cos*(iy-fcy) + fcy;
+        if (rx>=el.x&&rx<=el.x+el.width&&ry>=el.y&&ry<=el.y+el.depth) return el.id;
+      }
     } else if (el.type==='post'||el.type==='pillar') {
       const h=el.sizeInches/2;
       if (ix>=el.x-h&&ix<=el.x+h&&iy>=el.y-h&&iy<=el.y+h) return el.id;
@@ -2167,20 +2197,24 @@ function onMouseDown(e) {
     canvas.style.cursor='grabbing'; return;
   }
 
-  // Check selected element for resize / vertex handles
+  // First figure out what was clicked
+  const hitId = hitTestElement(pos.x, pos.y, ppi);
+
+  // Only check vertex / resize handles if the click is INSIDE the currently selected element
+  // (prevents handles of element A stealing clicks meant for element B)
   const selEl = plan.elements.find(el=>el.id===plan.selectedId);
-  if (selEl) {
+  const clickIsOnSelected = selEl && hitId === plan.selectedId;
+
+  if (selEl && clickIsOnSelected) {
     // Vertex drag for deck
     if (selEl.type==='deck'||selEl.type==='merged-deck') {
       const hit = hitTestVertex(pos.x, pos.y, selEl, ppi);
       if (hit) {
         if (hit.isInsert) {
-          // Insert new vertex
           const pts = selEl.points||selEl.outline;
           const a=pts[hit.idx], b=pts[(hit.idx+1)%pts.length];
           const newPt = {x:(a.x+b.x)/2, y:(a.y+b.y)/2};
-          const arr = selEl.points||selEl.outline;
-          arr.splice(hit.idx+1, 0, newPt);
+          pts.splice(hit.idx+1, 0, newPt);
           isDragVertex=true; dragVertexId=selEl.id; dragVertexIdx=hit.idx+1;
         } else {
           isDragVertex=true; dragVertexId=selEl.id; dragVertexIdx=hit.idx;
@@ -2188,7 +2222,7 @@ function onMouseDown(e) {
         setDirty(true); return;
       }
     }
-    // Resize handles for box elements
+    // Resize handles
     const rh = hitTestResizeHandle(pos.x, pos.y, selEl, ppi);
     if (rh) {
       isResizing=true; resizeId=selEl.id; resizeHandle=rh.name;
@@ -2202,8 +2236,7 @@ function onMouseDown(e) {
     }
   }
 
-  // Hit test elements
-  const hitId = hitTestElement(pos.x, pos.y, ppi);
+  // Select whatever was clicked
   plan.selectedId = hitId;
   renderProps();
 
@@ -2277,7 +2310,6 @@ function onMouseMove(e) {
     const nx=snapToGrid(ipos.x-dragOffX), ny=snapToGrid(ipos.y-dragOffY);
     if(el.type==='deck'||el.type==='merged-deck'){
       const pts=el.points||el.outline;
-      // Target centroid position (snapped)
       const targetCx = snapToGrid(ipos.x - dragOffX);
       const targetCy = snapToGrid(ipos.y - dragOffY);
       const curCx = pts.reduce((s,p)=>s+p.x,0)/pts.length;
@@ -2288,9 +2320,8 @@ function onMouseMove(e) {
       const lenX=el.endX-el.startX, lenY=el.endY-el.startY;
       const newSX=snapToGrid(ipos.x-dragOffX), newSY=snapToGrid(ipos.y-dragOffY);
       el.startX=newSX; el.startY=newSY; el.endX=newSX+lenX; el.endY=newSY+lenY;
-    } else if(el.type==='fire-pit'){
-      el.x=nx; el.y=ny;
     } else {
+      // All box-type elements: patio, stairs, furniture, pergola, hot-tub, post, pillar, fire-pit
       el.x=nx; el.y=ny;
     }
     setDirty(true); redraw(); return;
@@ -2695,21 +2726,21 @@ function renderProps() {
     </div>`;
   } else if(el.type==='patio'){
     html+=`<div class="prop-grid">
-      <div class="prop-row"><label>Width</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)" min="12"/></div>
-      <div class="prop-row"><label>Height</label><input type="number" value="${Math.round(el.height)}" onchange="updateProp('height',+this.value)" min="12"/></div>
+      <div class="prop-row"><label>Width</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)" min="12"step="1"/></div>
+      <div class="prop-row"><label>Height</label><input type="number" value="${Math.round(el.height)}" onchange="updateProp('height',+this.value)" min="12"step="1"/></div>
     </div>
     <div class="prop-row"><label>Rounded Corner</label>
       <select onchange="updateProp('roundedCorner',this.value)">
         ${['none','ne','nw','se','sw'].map(v=>`<option value="${v}" ${el.roundedCorner===v?'selected':''}>${v==='none'?'None':v.toUpperCase()}</option>`).join('')}
       </select>
     </div>
-    <div class="prop-row"><label>Rounded Radius (in)</label><input type="number" value="${Math.round(el.roundedRadius||60)}" onchange="updateProp('roundedRadius',+this.value)"/></div>`;
+    <div class="prop-row"><label>Rounded Radius (in)</label><input type="number" value="${Math.round(el.roundedRadius||60)}" onchange="updateProp('roundedRadius',+this.value)"step="1"/></div>`;
   } else if(el.type==='stairs'){
     html+=`<div class="prop-grid">
-      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)"/></div>
-      <div class="prop-row"><label>Depth (in)</label><input type="number" value="${Math.round(el.depth)}" onchange="updateProp('depth',+this.value)"/></div>
-      <div class="prop-row"><label>Steps</label><input type="number" value="${el.steps||4}" onchange="updateProp('steps',+this.value)" min="1" max="20"/></div>
-      <div class="prop-row"><label>Angle (°)</label><input type="number" value="${el.angle||0}" onchange="updateProp('angle',+this.value)"/></div>
+      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)"step="1"/></div>
+      <div class="prop-row"><label>Depth (in)</label><input type="number" value="${Math.round(el.depth)}" onchange="updateProp('depth',+this.value)"step="1"/></div>
+      <div class="prop-row"><label>Steps</label><input type="number" value="${el.steps||4}" onchange="updateProp('steps',+this.value)" min="1" max="20"step="1"/></div>
+      <div class="prop-row"><label>Angle (°)</label><input type="number" value="${el.angle||0}" onchange="updateProp('angle',+this.value)"step="1"/></div>
     </div>`;
   } else if(el.type==='railing'){
     html+=`<div class="prop-row"><label>Color</label>
@@ -2720,7 +2751,7 @@ function renderProps() {
     </div>`;
   } else if(el.type==='furniture'){
     html+=`<div class="prop-row"><label>Name</label><input value="${el.name||''}" onchange="updateProp('name',this.value)"/></div>
-    <div class="prop-row"><label>Rotation (°)</label><input type="number" value="${el.rotation||0}" style="width:80px" onchange="updateProp('rotation',+this.value)"/></div>`;
+    <div class="prop-row"><label>Rotation (°)</label><input type="number" value="${el.rotation||0}" style="width:80px" onchange="updateProp('rotation',+this.value)"step="1"/></div>`;
 
     // Manufacturer — CC gets primary + secondary, NC gets frame + cushion
     const isCC = el.manufacturer === 'casual-comfort';
@@ -2776,19 +2807,19 @@ function renderProps() {
     if (el.cushionColor) html += `<button class="btn btn-danger" style="font-size:10px;padding:1px 6px;margin-top:2px" onclick="updateFurnCushion('${el.id}',null,null)">✕ Remove cushion</button>`;
     html += `</div></div>`;
   } else if(el.type==='post'||el.type==='pillar'){
-    html+=`<div class="prop-row"><label>Size (in)</label><input type="number" value="${el.sizeInches||4}" onchange="updateProp('sizeInches',+this.value)" min="2" max="24"/></div>`;
+    html+=`<div class="prop-row"><label>Size (in)</label><input type="number" value="${el.sizeInches||4}" onchange="updateProp('sizeInches',+this.value)" min="2" max="24"step="1"/></div>`;
   } else if(el.type==='pergola'){
     html+=`<div class="prop-grid">
-      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)"/></div>
-      <div class="prop-row"><label>Height (in)</label><input type="number" value="${Math.round(el.height)}" onchange="updateProp('height',+this.value)"/></div>
+      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)"step="1"/></div>
+      <div class="prop-row"><label>Height (in)</label><input type="number" value="${Math.round(el.height)}" onchange="updateProp('height',+this.value)"step="1"/></div>
     </div>`;
   } else if(el.type==='hot-tub'){
     html+=`<div class="prop-grid">
-      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)"/></div>
-      <div class="prop-row"><label>Height (in)</label><input type="number" value="${Math.round(el.height)}" onchange="updateProp('height',+this.value)"/></div>
+      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)"step="1"/></div>
+      <div class="prop-row"><label>Height (in)</label><input type="number" value="${Math.round(el.height)}" onchange="updateProp('height',+this.value)"step="1"/></div>
     </div>`;
   } else if(el.type==='fire-pit'){
-    html+=`<div class="prop-row"><label>Diameter (in)</label><input type="number" value="${Math.round(el.diameter||46)}" onchange="updateProp('diameter',+this.value)"/></div>`;
+    html+=`<div class="prop-row"><label>Diameter (in)</label><input type="number" value="${Math.round(el.diameter||46)}" onchange="updateProp('diameter',+this.value)"step="1"/></div>`;
   }
 
   // Position
@@ -2800,8 +2831,8 @@ function renderProps() {
     px=Math.round(el.startX); py=Math.round(el.startY);
   }
   html+=`<div class="prop-grid" style="margin-top:4px">
-    <div class="prop-row"><label>X (in)</label><input type="number" value="${Math.round(px)}" onchange="updatePropPos('x',+this.value)"/></div>
-    <div class="prop-row"><label>Y (in)</label><input type="number" value="${Math.round(py)}" onchange="updatePropPos('y',+this.value)"/></div>
+    <div class="prop-row"><label>X (in)</label><input type="number" value="${Math.round(px)}" onchange="updatePropPos('x',+this.value)"step="1"/></div>
+    <div class="prop-row"><label>Y (in)</label><input type="number" value="${Math.round(py)}" onchange="updatePropPos('y',+this.value)"step="1"/></div>
   </div>`;
 
   html+=`<div class="prop-actions" style="margin-top:6px">
