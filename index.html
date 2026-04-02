@@ -2400,12 +2400,24 @@ function onMouseMove(e) {
   if (isDragVertex && dragVertexId) {
     const el = plan.elements.find(e=>e.id===dragVertexId);
     if (el) {
-      const ipos=canvasToInches(pos.x,pos.y);
-      // stairs use el.points, deck uses el.points, merged-deck uses el.outline
+      const ipos = canvasToInches(pos.x, pos.y);
       const pts = el.points || el.outline;
-      pts[dragVertexIdx].x=snapToGrid(ipos.x);
-      pts[dragVertexIdx].y=snapToGrid(ipos.y);
-      // For stairs: update width/depth/x/y from bounding box of shaped points
+
+      // For rotated stairs, rotate the mouse position back into local (unrotated) space
+      let lx = ipos.x, ly = ipos.y;
+      if (el.type === 'stairs' && el.rotation) {
+        const angle = el.rotation * Math.PI / 180;
+        const ocx = pts.reduce((s,p)=>s+p.x,0)/pts.length;
+        const ocy = pts.reduce((s,p)=>s+p.y,0)/pts.length;
+        const cos = Math.cos(-angle), sin = Math.sin(-angle);
+        lx = cos*(ipos.x-ocx) - sin*(ipos.y-ocy) + ocx;
+        ly = sin*(ipos.x-ocx) + cos*(ipos.y-ocy) + ocy;
+      }
+
+      pts[dragVertexIdx].x = snapToGrid(lx);
+      pts[dragVertexIdx].y = snapToGrid(ly);
+
+      // Keep bounding box in sync for stairs
       if (el.type==='stairs' && el.points) {
         const xs=el.points.map(p=>p.x), ys=el.points.map(p=>p.y);
         el.x=Math.min(...xs); el.y=Math.min(...ys);
