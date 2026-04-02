@@ -47,6 +47,36 @@ select option{background:var(--surface2)}
 #main{display:flex;flex:1;min-height:0}
 #canvas-wrap{flex:1;position:relative;overflow:hidden}
 canvas{display:block;cursor:crosshair}
+
+/* Canvas chat bar — pinned to bottom of the drawing area, always visible */
+#canvas-chat-bar{
+  position:absolute;bottom:0;left:0;right:0;
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px;
+  background:rgba(18,22,30,0.88);
+  backdrop-filter:blur(8px);
+  border-top:1px solid var(--border2);
+  z-index:20;
+  box-sizing:border-box;
+}
+#canvas-chat-bar input{
+  flex:1;height:38px;
+  background:rgba(255,255,255,0.07);
+  border:1px solid var(--border2);
+  border-radius:8px;padding:0 12px;
+  color:var(--text);
+  font-size:16px; /* 16px prevents iOS zoom on focus */
+}
+#canvas-chat-bar input:focus{border-color:var(--primary);outline:none;background:rgba(255,255,255,0.1)}
+#canvas-chat-bar input::placeholder{color:var(--text3);font-size:13px}
+#canvas-chat-btn{
+  height:38px;padding:0 18px;border-radius:8px;
+  background:var(--primary-dim);color:var(--primary);
+  border:1px solid var(--primary);font-size:14px;font-weight:600;
+  white-space:nowrap;cursor:pointer;flex-shrink:0;
+}
+#canvas-chat-btn:active{background:var(--primary);color:#000}
+#canvas-chat-btn.thinking{opacity:.5;cursor:not-allowed}
 #right-panel{width:300px;display:flex;flex-direction:column;border-left:1px solid var(--border);flex-shrink:0}
 #props-panel{border-bottom:1px solid var(--border);overflow-y:auto;max-height:45%}
 #chat-panel{flex:1;display:flex;flex-direction:column;min-height:0}
@@ -194,8 +224,8 @@ canvas{display:block;cursor:crosshair}
   #right-panel{display:none}
   #mobile-tabs{display:flex}
   #mobile-drawer{display:flex}
-  #mobile-chat-bar{display:flex}
-  #prompt-fab{display:flex !important}
+  #mobile-chat-bar{display:none !important}  /* replaced by canvas-chat-bar */
+  #prompt-fab{display:none !important}        /* replaced by canvas-chat-bar */
   /* Push canvas up so chat bar + tab bar don't overlap content */
   #main{padding-bottom:104px}
   #toolbar{height:40px;padding:0 6px}
@@ -325,6 +355,15 @@ canvas{display:block;cursor:crosshair}
         <span id="merge-msg"></span>
         <button class="btn-merge" onclick="document.getElementById('merge-banner').style.display='none'">✕</button>
       </div>
+
+      <!-- CANVAS CHAT BAR — always visible at bottom of plan, all screen sizes -->
+      <div id="canvas-chat-bar">
+        <div class="ai-dot" style="flex-shrink:0"></div>
+        <input type="text" id="canvas-chat-input"
+          placeholder="Tell me what to build… e.g. Add a 20×16 deck with stairs south"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+        <button id="canvas-chat-btn" onclick="sendCanvasChat()">Send</button>
+      </div>
     </div>
 
     <!-- RIGHT PANEL -->
@@ -332,6 +371,7 @@ canvas{display:block;cursor:crosshair}
       <div class="tabs">
         <div class="tab active" id="tab-props" onclick="switchTab('props')">Properties</div>
         <div class="tab" id="tab-colors" onclick="switchTab('colors')">Colors</div>
+        <div class="tab" id="tab-chat" onclick="switchTab('chat')">✦ AI</div>
       </div>
 
       <!-- PROPS PANEL -->
@@ -351,7 +391,7 @@ canvas{display:block;cursor:crosshair}
       </div>
 
       <!-- CHAT PANEL -->
-      <div id="chat-panel">
+      <div id="chat-panel" style="display:none">
         <div id="chat-hdr">
           <div class="ai-dot"></div>
           <span>AI Command Panel</span>
@@ -1404,60 +1444,101 @@ function drawPatio(ctx, el, ppi, sel) {
 }
 
 function drawStairs(ctx, el, ppi, sel) {
-  const bx = el.x*ppi+plan.panX, by = el.y*ppi+plan.panY;
-  const w = el.width*ppi, d = el.depth*ppi;
-  const angle = (el.angle||0) * Math.PI/180;
-  const steps = el.steps||4;
-  const cx = bx+w/2, cy = by+d/2;
+  const steps = el.steps || 4;
+
+  // Get the polygon points — either custom shaped or default rectangle
+  const pts = getStairPoints(el, ppi);
+
+  // Bounding box for step lines and label
+  const xs = pts.map(p=>p.x), ys = pts.map(p=>p.y);
+  const minX=Math.min(...xs), maxX=Math.max(...xs);
+  const minY=Math.min(...ys), maxY=Math.max(...ys);
+  const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
 
   ctx.save();
-  ctx.translate(cx,cy); ctx.rotate(angle); ctx.translate(-cx,-cy);
 
-  // Fill
+  // Clip to stair polygon
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
   ctx.fillStyle = el.color || '#8B7260';
-  ctx.fillRect(bx, by, w, d);
+  ctx.fill();
+  ctx.clip();
 
-  // Step lines (horizontal = across width, showing nosing)
-  ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1;
-  for(let i=1;i<steps;i++) {
-    const sy = by + i*d/steps;
-    ctx.beginPath(); ctx.moveTo(bx,sy); ctx.lineTo(bx+w,sy); ctx.stroke();
-    // Nosing shadow
+  // Step lines — horizontal bands across the bounding height
+  const stepH = (maxY-minY)/steps;
+  ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=1;
+  for (let i=1;i<steps;i++) {
+    const sy = minY + i*stepH;
+    ctx.beginPath(); ctx.moveTo(minX-2, sy); ctx.lineTo(maxX+2, sy); ctx.stroke();
     ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=0.5;
-    ctx.beginPath(); ctx.moveTo(bx,sy+1); ctx.lineTo(bx+w,sy+1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(minX-2, sy+1); ctx.lineTo(maxX+2, sy+1); ctx.stroke();
     ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=1;
   }
 
-  // Diagonal arrow showing direction of descent
+  // Descent arrow
   ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(bx+w/2,by+4); ctx.lineTo(bx+w/2,by+d-4);
-  ctx.moveTo(bx+w/2-6,by+d-12); ctx.lineTo(bx+w/2,by+d-4); ctx.lineTo(bx+w/2+6,by+d-12);
+  ctx.beginPath(); ctx.moveTo(cx,minY+4); ctx.lineTo(cx,maxY-4);
+  ctx.moveTo(cx-6,maxY-12); ctx.lineTo(cx,maxY-4); ctx.lineTo(cx+6,maxY-12);
   ctx.stroke();
 
-  // Outline
-  ctx.strokeStyle = sel?'#4FC3F7':'rgba(255,255,255,0.35)';
-  ctx.lineWidth = sel?2:1;
-  ctx.strokeRect(bx, by, w, d);
+  ctx.restore();
+
+  // Polygon outline
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
+  ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = sel ? 2 : 1;
+  ctx.stroke();
 
   // Label
-  const lbl = `${fmtFt(el.width)}×${fmtFt(el.depth)} · ${steps} steps${el.angle?` · ${el.angle}°`:''}`;
+  const w=maxX-minX, d=maxY-minY;
+  const lbl = `${fmtFt(el.width||w/ppi)}×${fmtFt(el.depth||d/ppi)} · ${steps} steps${el.angle?` · ${el.angle}°`:''}`;
   ctx.font='bold 9px Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(bx+w/2-60,by+d/2-7,120,14);
-  ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fillText(lbl,bx+w/2,by+d/2);
+  const tw=ctx.measureText(lbl).width+8;
+  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(cx-tw/2,cy-7,tw,14);
+  ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fillText(lbl,cx,cy);
 
-  ctx.restore();
-  // Resize + angle handle
-  if(sel){
-    ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle); ctx.translate(-cx,-cy);
-    drawResizeHandles(ctx,bx,by,w,d);
-    ctx.restore();
-    // Angle control handle (outside top-right, not rotated)
-    const hx=bx+w+20, hy=by-20;
-    ctx.fillStyle='#FFB000'; ctx.beginPath(); ctx.arc(hx,hy,7,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.stroke();
-    ctx.fillStyle='#000'; ctx.font='bold 8px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('∠',hx,hy);
+  // Selection vertex handles (same as deck)
+  if (sel) {
+    drawVertexHandles(ctx, el.points || getStairPointsInches(el), ppi);
   }
+}
+
+// Returns screen-space polygon points for stair rendering
+function getStairPoints(el, ppi) {
+  if (el.points && el.points.length >= 3) {
+    return el.points.map(p=>({x:p.x*ppi+plan.panX, y:p.y*ppi+plan.panY}));
+  }
+  // Default rectangle — apply angle rotation
+  const bx=el.x*ppi+plan.panX, by=el.y*ppi+plan.panY;
+  const w=el.width*ppi, d=el.depth*ppi;
+  const cx=bx+w/2, cy=by+d/2;
+  const angle=(el.angle||0)*Math.PI/180;
+  const corners=[{x:bx,y:by},{x:bx+w,y:by},{x:bx+w,y:by+d},{x:bx,y:by+d}];
+  if (angle===0) return corners;
+  const cos=Math.cos(angle), sin=Math.sin(angle);
+  return corners.map(p=>({
+    x: cos*(p.x-cx)-sin*(p.y-cy)+cx,
+    y: sin*(p.x-cx)+cos*(p.y-cy)+cy
+  }));
+}
+
+// Returns inch-space points for vertex handles
+function getStairPointsInches(el) {
+  if (el.points && el.points.length >= 3) return el.points;
+  const angle=(el.angle||0)*Math.PI/180;
+  const scx=el.x+el.width/2, scy=el.y+el.depth/2;
+  const corners=[{x:el.x,y:el.y},{x:el.x+el.width,y:el.y},{x:el.x+el.width,y:el.y+el.depth},{x:el.x,y:el.y+el.depth}];
+  if (angle===0) return corners;
+  const cos=Math.cos(angle), sin=Math.sin(angle);
+  return corners.map(p=>({
+    x: cos*(p.x-scx)-sin*(p.y-scy)+scx,
+    y: sin*(p.x-scx)+cos*(p.y-scy)+scy
+  }));
 }
 
 function drawRailing(ctx, el, ppi, sel) {
@@ -2106,8 +2187,14 @@ function hitTestResizeHandle(cx, cy, el, ppi) {
 }
 
 function hitTestVertex(cx, cy, el, ppi) {
-  const HIT=8;
-  const pts = el.points || el.outline;
+  const HIT = isTouchDevice ? 14 : 8;
+  // For stairs with polygon points, use those; for stairs without, use computed corners
+  let pts;
+  if (el.type === 'stairs') {
+    pts = el.points && el.points.length >= 3 ? el.points : getStairPointsInches(el);
+  } else {
+    pts = el.points || el.outline;
+  }
   if (!pts) return null;
   for(let i=0;i<pts.length;i++){
     const vx=pts[i].x*ppi+plan.panX, vy=pts[i].y*ppi+plan.panY;
@@ -2135,17 +2222,20 @@ function hitTestElement(cx, cy, ppi) {
     } else if (el.type==='pergola') {
       if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.height) return el.id;
     } else if (el.type==='stairs') {
-      // Account for rotation — transform click point into stair local space
-      const angle = (el.angle||0) * Math.PI/180;
-      if (angle === 0) {
-        if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.depth) return el.id;
+      // Use polygon points if shaped, otherwise rotated rect
+      if (el.points && el.points.length >= 3) {
+        if (pointInPolygon(ix, iy, el.points)) return el.id;
       } else {
-        // Rotate click point around stair center
-        const scx = el.x + el.width/2, scy = el.y + el.depth/2;
-        const cos = Math.cos(-angle), sin = Math.sin(-angle);
-        const rx = cos*(ix-scx) - sin*(iy-scy) + scx;
-        const ry = sin*(ix-scx) + cos*(iy-scy) + scy;
-        if (rx>=el.x&&rx<=el.x+el.width&&ry>=el.y&&ry<=el.y+el.depth) return el.id;
+        const angle = (el.angle||0) * Math.PI/180;
+        if (angle === 0) {
+          if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.depth) return el.id;
+        } else {
+          const scx = el.x + el.width/2, scy = el.y + el.depth/2;
+          const cos = Math.cos(-angle), sin = Math.sin(-angle);
+          const rx = cos*(ix-scx) - sin*(iy-scy) + scx;
+          const ry = sin*(ix-scx) + cos*(iy-scy) + scy;
+          if (rx>=el.x&&rx<=el.x+el.width&&ry>=el.y&&ry<=el.y+el.depth) return el.id;
+        }
       }
     } else if (el.type==='furniture') {
       // Account for rotation
@@ -2206,8 +2296,12 @@ function onMouseDown(e) {
   const clickIsOnSelected = selEl && hitId === plan.selectedId;
 
   if (selEl && clickIsOnSelected) {
-    // Vertex drag for deck
-    if (selEl.type==='deck'||selEl.type==='merged-deck') {
+    // Vertex drag for deck AND stairs (stairs can be polygon-shaped)
+    if (selEl.type==='deck'||selEl.type==='merged-deck'||selEl.type==='stairs') {
+      // For stairs: initialize points array from rectangle corners on first vertex drag
+      if (selEl.type==='stairs' && (!selEl.points || selEl.points.length < 3)) {
+        selEl.points = getStairPointsInches(selEl);
+      }
       const hit = hitTestVertex(pos.x, pos.y, selEl, ppi);
       if (hit) {
         if (hit.isInsert) {
@@ -2272,9 +2366,16 @@ function onMouseMove(e) {
     const el = plan.elements.find(e=>e.id===dragVertexId);
     if (el) {
       const ipos=canvasToInches(pos.x,pos.y);
-      const pts=el.points||el.outline;
+      // stairs use el.points, deck uses el.points, merged-deck uses el.outline
+      const pts = el.points || el.outline;
       pts[dragVertexIdx].x=snapToGrid(ipos.x);
       pts[dragVertexIdx].y=snapToGrid(ipos.y);
+      // For stairs: update width/depth/x/y from bounding box of shaped points
+      if (el.type==='stairs' && el.points) {
+        const xs=el.points.map(p=>p.x), ys=el.points.map(p=>p.y);
+        el.x=Math.min(...xs); el.y=Math.min(...ys);
+        el.width=Math.max(...xs)-el.x; el.depth=Math.max(...ys)-el.y;
+      }
       setDirty(true); redraw(); return;
     }
   }
@@ -2364,15 +2465,37 @@ function onWheel(e) {
 }
 
 function onKeyDown(e) {
-  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
-  if(e.key==='Delete'||e.key==='Backspace'){
-    if(plan.selectedId){ plan.elements=plan.elements.filter(el=>el.id!==plan.selectedId); plan.selectedId=null; setDirty(true); redraw(); renderProps(); }
+  // If focus is inside a number input, let browser handle up/down arrows natively
+  // Don't intercept anything typed into input/textarea/select
+  if (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.tagName==='SELECT') return;
+
+  if (e.key==='Delete'||e.key==='Backspace') {
+    if (plan.selectedId) {
+      plan.elements=plan.elements.filter(el=>el.id!==plan.selectedId);
+      plan.selectedId=null; setDirty(true); redraw(); renderProps();
+    }
   }
-  if(e.key==='r'||e.key==='R'){
+  if (e.key==='r'||e.key==='R') {
     const el=plan.elements.find(e=>e.id===plan.selectedId);
-    if(el&&el.rotation!==undefined){ el.rotation=(el.rotation+15)%360; setDirty(true); redraw(); }
+    if (el&&el.rotation!==undefined) { el.rotation=(el.rotation+15)%360; setDirty(true); redraw(); }
   }
-  if(e.key==='Escape'){ plan.selectedId=null; redraw(); renderProps(); }
+  if (e.key==='Escape') { plan.selectedId=null; redraw(); renderProps(); }
+
+  // Arrow keys nudge selected element by 1 grid unit
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+    const el = plan.elements.find(e=>e.id===plan.selectedId);
+    if (!el) return;
+    e.preventDefault();
+    const step = plan.gridSpacing || 6;
+    const dx = e.key==='ArrowLeft'?-step:e.key==='ArrowRight'?step:0;
+    const dy = e.key==='ArrowUp'?-step:e.key==='ArrowDown'?step:0;
+    if (el.type==='deck'||el.type==='merged-deck') {
+      const pts=el.points||el.outline; pts.forEach(p=>{p.x+=dx;p.y+=dy;});
+    } else if (el.type==='railing') {
+      el.startX+=dx; el.startY+=dy; el.endX+=dx; el.endY+=dy;
+    } else { el.x+=dx; el.y+=dy; }
+    setDirty(true); redraw(); renderProps();
+  }
 }
 
 // Dim overlay - shows during resize at element center
@@ -2630,9 +2753,16 @@ function simplifyPolygon(pts) {
 function switchTab(tab) {
   document.getElementById('tab-props').classList.toggle('active', tab==='props');
   document.getElementById('tab-colors').classList.toggle('active', tab==='colors');
-  document.getElementById('props-panel').style.display=tab==='props'?'':'none';
-  document.getElementById('colors-panel').style.display=tab==='colors'?'flex':'none';
-  if(tab==='colors') renderColorsPanel();
+  document.getElementById('tab-chat').classList.toggle('active', tab==='chat');
+  document.getElementById('props-panel').style.display = tab==='props' ? '' : 'none';
+  document.getElementById('colors-panel').style.display = tab==='colors' ? 'flex' : 'none';
+  document.getElementById('chat-panel').style.display = tab==='chat' ? 'flex' : 'none';
+  if (tab==='colors') renderColorsPanel();
+  if (tab==='chat') {
+    // Scroll chat to bottom when opening
+    const msgs = document.getElementById('chat-msgs');
+    if (msgs) setTimeout(()=>{ msgs.scrollTop = msgs.scrollHeight; }, 50);
+  }
 }
 
 function renderColorsPanel() {
@@ -2726,21 +2856,21 @@ function renderProps() {
     </div>`;
   } else if(el.type==='patio'){
     html+=`<div class="prop-grid">
-      <div class="prop-row"><label>Width</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)" min="12"step="1"/></div>
-      <div class="prop-row"><label>Height</label><input type="number" value="${Math.round(el.height)}" onchange="updateProp('height',+this.value)" min="12"step="1"/></div>
+      <div class="prop-row"><label>Width</label><input type="number" value="${Math.round(el.width)}" oninput="updateProp('width',+this.value)" min="12"step="1"/></div>
+      <div class="prop-row"><label>Height</label><input type="number" value="${Math.round(el.height)}" oninput="updateProp('height',+this.value)" min="12"step="1"/></div>
     </div>
     <div class="prop-row"><label>Rounded Corner</label>
       <select onchange="updateProp('roundedCorner',this.value)">
         ${['none','ne','nw','se','sw'].map(v=>`<option value="${v}" ${el.roundedCorner===v?'selected':''}>${v==='none'?'None':v.toUpperCase()}</option>`).join('')}
       </select>
     </div>
-    <div class="prop-row"><label>Rounded Radius (in)</label><input type="number" value="${Math.round(el.roundedRadius||60)}" onchange="updateProp('roundedRadius',+this.value)"step="1"/></div>`;
+    <div class="prop-row"><label>Rounded Radius (in)</label><input type="number" value="${Math.round(el.roundedRadius||60)}" oninput="updateProp('roundedRadius',+this.value)"step="1"/></div>`;
   } else if(el.type==='stairs'){
     html+=`<div class="prop-grid">
-      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)"step="1"/></div>
-      <div class="prop-row"><label>Depth (in)</label><input type="number" value="${Math.round(el.depth)}" onchange="updateProp('depth',+this.value)"step="1"/></div>
-      <div class="prop-row"><label>Steps</label><input type="number" value="${el.steps||4}" onchange="updateProp('steps',+this.value)" min="1" max="20"step="1"/></div>
-      <div class="prop-row"><label>Angle (°)</label><input type="number" value="${el.angle||0}" onchange="updateProp('angle',+this.value)"step="1"/></div>
+      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" oninput="updateProp('width',+this.value)"step="1"/></div>
+      <div class="prop-row"><label>Depth (in)</label><input type="number" value="${Math.round(el.depth)}" oninput="updateProp('depth',+this.value)"step="1"/></div>
+      <div class="prop-row"><label>Steps</label><input type="number" value="${el.steps||4}" oninput="updateProp('steps',+this.value)" min="1" max="20"step="1"/></div>
+      <div class="prop-row"><label>Angle (°)</label><input type="number" value="${el.angle||0}" oninput="updateProp('angle',+this.value)"step="1"/></div>
     </div>`;
   } else if(el.type==='railing'){
     html+=`<div class="prop-row"><label>Color</label>
@@ -2751,7 +2881,7 @@ function renderProps() {
     </div>`;
   } else if(el.type==='furniture'){
     html+=`<div class="prop-row"><label>Name</label><input value="${el.name||''}" onchange="updateProp('name',this.value)"/></div>
-    <div class="prop-row"><label>Rotation (°)</label><input type="number" value="${el.rotation||0}" style="width:80px" onchange="updateProp('rotation',+this.value)"step="1"/></div>`;
+    <div class="prop-row"><label>Rotation (°)</label><input type="number" value="${el.rotation||0}" style="width:80px" oninput="updateProp('rotation',+this.value)"step="1"/></div>`;
 
     // Manufacturer — CC gets primary + secondary, NC gets frame + cushion
     const isCC = el.manufacturer === 'casual-comfort';
@@ -2807,19 +2937,19 @@ function renderProps() {
     if (el.cushionColor) html += `<button class="btn btn-danger" style="font-size:10px;padding:1px 6px;margin-top:2px" onclick="updateFurnCushion('${el.id}',null,null)">✕ Remove cushion</button>`;
     html += `</div></div>`;
   } else if(el.type==='post'||el.type==='pillar'){
-    html+=`<div class="prop-row"><label>Size (in)</label><input type="number" value="${el.sizeInches||4}" onchange="updateProp('sizeInches',+this.value)" min="2" max="24"step="1"/></div>`;
+    html+=`<div class="prop-row"><label>Size (in)</label><input type="number" value="${el.sizeInches||4}" oninput="updateProp('sizeInches',+this.value)" min="2" max="24"step="1"/></div>`;
   } else if(el.type==='pergola'){
     html+=`<div class="prop-grid">
-      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)"step="1"/></div>
-      <div class="prop-row"><label>Height (in)</label><input type="number" value="${Math.round(el.height)}" onchange="updateProp('height',+this.value)"step="1"/></div>
+      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" oninput="updateProp('width',+this.value)"step="1"/></div>
+      <div class="prop-row"><label>Height (in)</label><input type="number" value="${Math.round(el.height)}" oninput="updateProp('height',+this.value)"step="1"/></div>
     </div>`;
   } else if(el.type==='hot-tub'){
     html+=`<div class="prop-grid">
-      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" onchange="updateProp('width',+this.value)"step="1"/></div>
-      <div class="prop-row"><label>Height (in)</label><input type="number" value="${Math.round(el.height)}" onchange="updateProp('height',+this.value)"step="1"/></div>
+      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" oninput="updateProp('width',+this.value)"step="1"/></div>
+      <div class="prop-row"><label>Height (in)</label><input type="number" value="${Math.round(el.height)}" oninput="updateProp('height',+this.value)"step="1"/></div>
     </div>`;
   } else if(el.type==='fire-pit'){
-    html+=`<div class="prop-row"><label>Diameter (in)</label><input type="number" value="${Math.round(el.diameter||46)}" onchange="updateProp('diameter',+this.value)"step="1"/></div>`;
+    html+=`<div class="prop-row"><label>Diameter (in)</label><input type="number" value="${Math.round(el.diameter||46)}" oninput="updateProp('diameter',+this.value)"step="1"/></div>`;
   }
 
   // Position
@@ -2831,8 +2961,8 @@ function renderProps() {
     px=Math.round(el.startX); py=Math.round(el.startY);
   }
   html+=`<div class="prop-grid" style="margin-top:4px">
-    <div class="prop-row"><label>X (in)</label><input type="number" value="${Math.round(px)}" onchange="updatePropPos('x',+this.value)"step="1"/></div>
-    <div class="prop-row"><label>Y (in)</label><input type="number" value="${Math.round(py)}" onchange="updatePropPos('y',+this.value)"step="1"/></div>
+    <div class="prop-row"><label>X (in)</label><input type="number" value="${Math.round(px)}" oninput="updatePropPos('x',+this.value)"step="1"/></div>
+    <div class="prop-row"><label>Y (in)</label><input type="number" value="${Math.round(py)}" oninput="updatePropPos('y',+this.value)"step="1"/></div>
   </div>`;
 
   html+=`<div class="prop-actions" style="margin-top:6px">
@@ -3363,8 +3493,79 @@ document.getElementById('chat-input').addEventListener('keydown', e=>{
 });
 
 // ============================================================
-// CATALOG MODAL
+// CANVAS CHAT BAR — always visible at bottom of plan
 // ============================================================
+async function sendCanvasChat() {
+  const inp = document.getElementById('canvas-chat-input');
+  const btn = document.getElementById('canvas-chat-btn');
+  if (!inp || !btn || isThinking) return;
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  inp.blur(); // dismiss iPad keyboard after send
+
+  // Show in AI tab message history too
+  addChatMsg(text, 'user');
+  chatHistory.push({role:'user', content:text});
+
+  // Try local parser first
+  const localResult = parseCommand(text);
+  if (localResult.success) {
+    addChatMsg(localResult.msg, 'assistant');
+    chatHistory.push({role:'assistant', content:localResult.msg});
+    showMobileToast(localResult.msg);
+    return;
+  }
+  if (!localResult.msg.startsWith("I didn't understand")) {
+    addChatMsg(localResult.msg, 'err');
+    showMobileToast(localResult.msg, true);
+    return;
+  }
+
+  // AI fallback
+  btn.classList.add('thinking');
+  btn.textContent = '…';
+  isThinking = true;
+  showMobileToast('Thinking…');
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:512,
+        system:`You are an AI assistant for a Deck & Patio Planner. Translate requests into commands. Current plan: ${buildPlanSummary()}.
+COMMANDS: add deck WxH | add patio WxH [north/south/east/west] [with rounded NE/NW/SE/SW corner] | add stairs [direction] N steps | add railing [direction/around] | add pergola WxH | add hot tub WxH | add fire pit D | set deck color to COLOR | set deck border color to COLOR | merge deck segments | remove all TYPE | undo | clear plan
+Reply with commands (one per line) then ✓ explanation.`,
+        messages: chatHistory.slice(-8)
+      })
+    });
+    const data = await resp.json();
+    const reply = data.content?.[0]?.text || '';
+    const lines = reply.trim().split('\n').filter(l=>l.trim());
+    let explanation='', anySuccess=false;
+    for (const line of lines) {
+      if (line.startsWith('✓')) { explanation=line; continue; }
+      const r = parseCommand(line.trim());
+      if (r.success) anySuccess=true;
+    }
+    const msg = explanation || (anySuccess ? '✓ Done!' : reply);
+    addChatMsg(msg, anySuccess?'assistant':'err');
+    chatHistory.push({role:'assistant', content:msg});
+    showMobileToast(msg, !anySuccess);
+  } catch(e) {
+    addChatMsg("Try: \"Add deck 20x16\" or type \"help\"", 'err');
+    showMobileToast("Couldn't connect to AI", true);
+  } finally {
+    isThinking = false;
+    btn.classList.remove('thinking');
+    btn.textContent = 'Send';
+  }
+}
+
+// Enter key on canvas chat bar
+document.getElementById('canvas-chat-input').addEventListener('keydown', e=>{
+  if (e.key==='Enter') { e.preventDefault(); sendCanvasChat(); }
+});
 function openCatalog(mfr) {
   catalogMfr = mfr;
   const isCC = mfr === 'casual-comfort';
