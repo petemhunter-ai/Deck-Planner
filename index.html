@@ -122,7 +122,7 @@ canvas{display:block;cursor:crosshair}
 .cat-item .dims{font-size:11px;color:var(--text3)}
 .cat-item .add-btn{background:var(--primary-dim);color:var(--primary);border:1px solid var(--primary);border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;white-space:nowrap}
 .cat-item .add-btn:hover{background:var(--primary);color:#000}
-.modal-footer{padding:10px 16px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.modal-footer{padding:10px 16px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;max-height:220px;overflow-y:auto}
 .modal-footer label{font-size:11px;color:var(--text2);font-weight:500}
 .color-group-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-top:6px;margin-bottom:2px}
 
@@ -147,10 +147,38 @@ canvas{display:block;cursor:crosshair}
 .mob-tab.active{color:var(--primary)}
 .mob-tab.active svg{stroke:var(--primary)}
 
+/* MOBILE CHAT BAR — always visible above tab bar */
+#mobile-chat-bar{
+  display:none;
+  position:fixed;
+  bottom:52px;
+  left:0;right:0;
+  background:var(--surface);
+  border-top:1px solid var(--border2);
+  padding:8px 10px;
+  z-index:60;
+  gap:8px;
+  align-items:center;
+}
+#mobile-chat-bar input{
+  flex:1;height:40px;font-size:16px !important;
+  border-radius:10px;padding:0 12px;
+  background:var(--surface2);border:1px solid var(--border2);
+  color:var(--text);
+}
+#mobile-chat-bar input:focus{border-color:var(--primary);outline:none}
+#mobile-chat-bar button{
+  height:40px;padding:0 16px;border-radius:10px;
+  background:var(--primary-dim);color:var(--primary);
+  border:1px solid var(--primary);font-size:14px;font-weight:600;
+  white-space:nowrap;flex-shrink:0;
+}
+#mobile-chat-bar button:active{background:var(--primary);color:#000}
+
 /* Slide-up drawer for panels on mobile */
 #mobile-drawer{display:none;position:fixed;bottom:52px;left:0;right:0;background:var(--surface);border-top:2px solid var(--border2);border-radius:16px 16px 0 0;z-index:50;max-height:55vh;overflow:hidden;flex-direction:column;transform:translateY(100%);transition:transform .3s ease}
 #mobile-drawer.open{transform:translateY(0)}
-#drawer-handle{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:10px auto 6px;flex-shrink:0}
+#drawer-handle{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:10px auto 6px;flex-shrink:0;cursor:pointer}
 #drawer-content{flex:1;overflow-y:auto;padding:0 0 8px}
 
 /* iPad landscape: keep side panel but wider canvas */
@@ -164,16 +192,15 @@ canvas{display:block;cursor:crosshair}
   #right-panel{display:none}
   #mobile-tabs{display:flex}
   #mobile-drawer{display:flex}
+  #mobile-chat-bar{display:flex}
+  /* Push canvas up so chat bar + tab bar don't overlap content */
+  #main{padding-bottom:104px}
   #toolbar{height:40px;padding:0 6px}
   #header h1{display:none}
   #header .sep:first-of-type{display:none}
-  #toolbar .btn{font-size:11px;padding:3px 6px}
-  /* Make toolbar items slightly bigger for touch */
   .btn{min-height:32px}
-  /* Ensure chat input is always visible and tappable */
-  #chat-input-row{padding:10px;gap:8px}
-  #chat-input{height:40px;font-size:16px !important;border-radius:8px} /* font-size:16px prevents iOS zoom */
-  #chat-send{height:40px;padding:0 16px;font-size:14px;border-radius:8px}
+  /* Desktop chat panel input hidden on mobile (replaced by mobile-chat-bar) */
+  #chat-input-row{display:none}
 }
 
 /* Safe area insets for notched iPads */
@@ -393,6 +420,12 @@ canvas{display:block;cursor:crosshair}
   </div>
 </div>
 
+<!-- MOBILE CHAT BAR — always visible above tab bar on iPad/phone -->
+<div id="mobile-chat-bar">
+  <input type="text" id="mobile-chat-input" placeholder="Describe what you want to build…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+  <button onclick="sendMobileChatBar()">Send</button>
+</div>
+
 <!-- MOBILE BOTTOM TAB BAR -->
 <div id="mobile-tabs">
   <button class="mob-tab active" id="mtab-canvas" onclick="showMobilePanel('canvas')">
@@ -471,14 +504,48 @@ const CC_COLORS = [
 const NC_COLORS = [
   {name:"Aspen",hex:"#C8B890"},{name:"Charcoal",hex:"#4A4A4A"},{name:"Husk",hex:"#B89860"},
   {name:"Jacobean",hex:"#3A2818"},{name:"Oyster",hex:"#E8E0D0"},{name:"Parchment",hex:"#D8C8A0"},
-  {name:"Willow Flat",hex:"#908070"},{name:"Willow Thick",hex:"#988068"}
+  {name:"Willow Flat",hex:"#908070"},{name:"Willow Thick",hex:"#988068"},
+  {name:"Espresso",hex:"#2E1F14"},{name:"Driftwood",hex:"#A89880"},
+  {name:"Graphite",hex:"#3A3A3A"},{name:"Sand",hex:"#D4C4A0"}
 ];
-const NC_CUSHIONS = [
-  {name:"Canvas Black",hex:"#1A1A1A"},{name:"Canvas Navy",hex:"#1B2B4A"},
-  {name:"Canvas Natural",hex:"#F0EBD8"},{name:"Canvas Granite",hex:"#9A9A9A"},
-  {name:"Canvas Jockey Red",hex:"#A03030"},{name:"Canvas Persimmon",hex:"#D05A3A"},
-  {name:"Canvas Fern",hex:"#4A7A50"},{name:"Canvas Taupe",hex:"#8A7A68"}
+
+// Full Sunbrella cushion palette — shared by both NorthCape and Casual Comfort
+const SUNBRELLA_CUSHIONS = [
+  {name:"Canvas Black",hex:"#1A1A1A",group:"Canvas Solids"},
+  {name:"Canvas Navy",hex:"#1B2B4A",group:"Canvas Solids"},
+  {name:"Canvas Natural",hex:"#F0EBD8",group:"Canvas Solids"},
+  {name:"Canvas Canvas",hex:"#E8DFC8",group:"Canvas Solids"},
+  {name:"Canvas Granite",hex:"#9A9A9A",group:"Canvas Solids"},
+  {name:"Canvas Jockey Red",hex:"#A03030",group:"Canvas Solids"},
+  {name:"Canvas Persimmon",hex:"#D05A3A",group:"Canvas Solids"},
+  {name:"Canvas Fern",hex:"#4A7A50",group:"Canvas Solids"},
+  {name:"Canvas Taupe",hex:"#8A7A68",group:"Canvas Solids"},
+  {name:"Canvas Spa",hex:"#6A9A9A",group:"Canvas Solids"},
+  {name:"Canvas Air Blue",hex:"#7A9AB8",group:"Canvas Solids"},
+  {name:"Canvas True Blue",hex:"#2A5A8A",group:"Canvas Solids"},
+  {name:"Canvas Aruba",hex:"#1A8A7A",group:"Canvas Solids"},
+  {name:"Canvas Rust",hex:"#A04A20",group:"Canvas Solids"},
+  {name:"Canvas Antique Beige",hex:"#D4C8A8",group:"Canvas Solids"},
+  {name:"Linen",hex:"#E8E0CC",group:"Solids"},
+  {name:"Linen Silver",hex:"#B8B4AA",group:"Solids"},
+  {name:"Regarding Grey",hex:"#8A8A88",group:"Solids"},
+  {name:"Coal",hex:"#3A3830",group:"Solids"},
+  {name:"Shore",hex:"#D4C8B0",group:"Solids"},
+  {name:"Cast Silver",hex:"#A8A8A0",group:"Patterns"},
+  {name:"Cast Slate",hex:"#6A7878",group:"Patterns"},
+  {name:"Cast Ash",hex:"#9A9890",group:"Patterns"},
+  {name:"Cast Lagoon",hex:"#5A8888",group:"Patterns"},
+  {name:"Cast Ocean",hex:"#3A6878",group:"Patterns"},
+  {name:"Cast Mist",hex:"#8AAAB0",group:"Patterns"},
+  {name:"Expand Surfside",hex:"#8ABAC8",group:"Patterns"},
+  {name:"Frequency Sand",hex:"#C8B888",group:"Patterns"},
+  {name:"Frequency Pebble",hex:"#9A9080",group:"Patterns"}
 ];
+// Keep NC_CUSHIONS as alias for backward compat
+const NC_CUSHIONS = SUNBRELLA_CUSHIONS;
+
+// Casual Comfort also uses Sunbrella — same palette
+const CC_CUSHIONS = SUNBRELLA_CUSHIONS;
 
 const CC_CATALOG = [
   {name:"Aquatic Collection",products:[
@@ -550,6 +617,35 @@ const CC_CATALOG = [
     {name:"Deep Seating Cocktail Table",width:48,depth:26,url:"https://www.casualcomfortusa.com/collections/deep-seating/"},
     {name:"Deep Seating End Table",width:22,depth:22,url:"https://www.casualcomfortusa.com/collections/deep-seating/"}
   ]},
+  {name:"Bayshore Collection",products:[
+    {name:"Bayshore Sofa",width:82,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Love Seat",width:58,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Club Chair",width:34,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Ottoman",width:34,depth:26,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Corner Section",width:36,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Armless Section",width:28,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Left Arm Section",width:34,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Right Arm Section",width:34,depth:36,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Chaise Section",width:34,depth:60,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Cocktail Table",width:48,depth:26,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore End Table",width:22,depth:22,url:"https://www.casualcomfortusa.com/collections/bayshore/"},
+    {name:"Bayshore Coffee Table",width:50,depth:28,url:"https://www.casualcomfortusa.com/collections/bayshore/"}
+  ]},
+  {name:"Oceanside Collection",products:[
+    {name:"Oceanside Sofa",width:84,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Love Seat",width:60,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Club Chair",width:36,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Ottoman",width:36,depth:28,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Corner Section",width:38,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Armless Section",width:30,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Left Arm Section",width:36,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Right Arm Section",width:36,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Chaise Lounge",width:36,depth:64,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside Cocktail Table",width:50,depth:28,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside End Table",width:24,depth:24,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 3-Pc Sectional",width:108,depth:38,url:"https://www.casualcomfortusa.com/collections/oceanside/"},
+    {name:"Oceanside 4-Pc Sectional w/Chaise",width:108,depth:76,url:"https://www.casualcomfortusa.com/collections/oceanside/"}
+  ]},
   {name:"Swivel & Glider",products:[
     {name:"Swivel Glider Chair",width:32,depth:34,url:"https://www.casualcomfortusa.com/collections/swivel/"},
     {name:"Swivel Rocker Chair",width:32,depth:34,url:"https://www.casualcomfortusa.com/collections/swivel/"},
@@ -608,6 +704,36 @@ const NC_CATALOG = [
     {name:"Overton Rect Coffee Table",width:44,depth:24,url:"https://www.northcape.com/product/overton-rectangle-coffee-table-w-textured-alum-wood-look-finish/"},
     {name:"Overton Conversation Table",width:40,depth:40,url:"https://www.northcape.com/product/overton-conversation-table-w-textured-alum-wood-look-finish-strong/"},
     {name:"Overton Square End Table",width:20,depth:20,url:"https://www.northcape.com/product/overton-square-end-table-wood-finish-texture/"}
+  ]},
+  {name:"Lakeside Collection",products:[
+    {name:"Lakeside Sofa",width:80,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
+    {name:"Loveseat",width:56,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
+    {name:"Lakeside Lounge Chair",width:32,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
+    {name:"Lakeside Ottoman",width:30,depth:26,url:"https://www.northcape.com/product-category/lakeside/"},
+    {name:"Lakeside Corner Section",width:34,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
+    {name:"Lakeside Armless Section",width:28,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
+    {name:"Lakeside Left Arm Section",width:34,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
+    {name:"Lakeside Right Arm Section",width:34,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
+    {name:"Lakeside Chaise Section",width:34,depth:62,url:"https://www.northcape.com/product-category/lakeside/"},
+    {name:"Lakeside Coffee Table",width:44,depth:24,url:"https://www.northcape.com/product-category/lakeside/"},
+    {name:"Lakeside End Table",width:22,depth:22,url:"https://www.northcape.com/product-category/lakeside/"},
+    {name:"Lakeside 3-Pc Sectional",width:90,depth:34,url:"https://www.northcape.com/product-category/lakeside/"},
+    {name:"Lakeside 4-Pc Sectional w/Chaise",width:90,depth:68,url:"https://www.northcape.com/product-category/lakeside/"}
+  ]},
+  {name:"Edgewater Collection",products:[
+    {name:"Edgewater Sofa",width:82,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
+    {name:"Edgewater Loveseat",width:58,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
+    {name:"Edgewater Lounge Chair",width:34,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
+    {name:"Edgewater Ottoman",width:32,depth:28,url:"https://www.northcape.com/product-category/edgewater/"},
+    {name:"Edgewater Corner Section",width:36,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
+    {name:"Edgewater Armless Section",width:30,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
+    {name:"Edgewater Left Arm Section",width:36,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
+    {name:"Edgewater Right Arm Section",width:36,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
+    {name:"Edgewater Chaise Section",width:36,depth:64,url:"https://www.northcape.com/product-category/edgewater/"},
+    {name:"Edgewater Coffee Table",width:46,depth:26,url:"https://www.northcape.com/product-category/edgewater/"},
+    {name:"Edgewater End Table",width:24,depth:24,url:"https://www.northcape.com/product-category/edgewater/"},
+    {name:"Edgewater 3-Pc Sectional",width:102,depth:36,url:"https://www.northcape.com/product-category/edgewater/"},
+    {name:"Edgewater 4-Pc Sectional w/Chaise",width:102,depth:72,url:"https://www.northcape.com/product-category/edgewater/"}
   ]},
   {name:"Cabo & Seaside",products:[
     {name:"Cabo Sofa",width:77,depth:33,url:"https://www.northcape.com/product-category/cabo/"},
@@ -1021,32 +1147,60 @@ function drawPatio(ctx, el, ppi, sel) {
 }
 
 function drawStairs(ctx, el, ppi, sel) {
-  const cx0 = el.x*ppi+plan.panX, cy0 = el.y*ppi+plan.panY;
+  const bx = el.x*ppi+plan.panX, by = el.y*ppi+plan.panY;
   const w = el.width*ppi, d = el.depth*ppi;
-  ctx.save();
-  if (el.angle) {
-    const ccx = cx0+w/2, ccy = cy0+d/2;
-    ctx.translate(ccx,ccy); ctx.rotate(el.angle*Math.PI/180); ctx.translate(-ccx,-ccy);
-  }
-  ctx.fillStyle = el.color || '#8B7260';
-  ctx.fillRect(cx0, cy0, w, d);
-  const steps = el.steps || 4;
-  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 0.7;
-  for (let i=1;i<steps;i++) {
-    const yd = cy0 + i*d/steps;
-    ctx.beginPath(); ctx.moveTo(cx0,yd); ctx.lineTo(cx0+w,yd); ctx.stroke();
-  }
-  ctx.strokeStyle = sel?'#4FC3F7':'rgba(255,255,255,0.3)';
-  ctx.lineWidth = sel?2:1;
-  ctx.strokeRect(cx0, cy0, w, d);
+  const angle = (el.angle||0) * Math.PI/180;
+  const steps = el.steps||4;
+  const cx = bx+w/2, cy = by+d/2;
 
-  // Dimension label
-  const dw = fmtFt(el.width), dd = fmtFt(el.depth);
-  const lbl = `${dw}×${dd} (${steps}steps)`;
-  ctx.font = 'bold 9px Segoe UI, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.fillText(lbl, cx0+w/2, cy0+d/2);
+  ctx.save();
+  ctx.translate(cx,cy); ctx.rotate(angle); ctx.translate(-cx,-cy);
+
+  // Fill
+  ctx.fillStyle = el.color || '#8B7260';
+  ctx.fillRect(bx, by, w, d);
+
+  // Step lines (horizontal = across width, showing nosing)
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1;
+  for(let i=1;i<steps;i++) {
+    const sy = by + i*d/steps;
+    ctx.beginPath(); ctx.moveTo(bx,sy); ctx.lineTo(bx+w,sy); ctx.stroke();
+    // Nosing shadow
+    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.moveTo(bx,sy+1); ctx.lineTo(bx+w,sy+1); ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=1;
+  }
+
+  // Diagonal arrow showing direction of descent
+  ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(bx+w/2,by+4); ctx.lineTo(bx+w/2,by+d-4);
+  ctx.moveTo(bx+w/2-6,by+d-12); ctx.lineTo(bx+w/2,by+d-4); ctx.lineTo(bx+w/2+6,by+d-12);
+  ctx.stroke();
+
+  // Outline
+  ctx.strokeStyle = sel?'#4FC3F7':'rgba(255,255,255,0.35)';
+  ctx.lineWidth = sel?2:1;
+  ctx.strokeRect(bx, by, w, d);
+
+  // Label
+  const lbl = `${fmtFt(el.width)}×${fmtFt(el.depth)} · ${steps} steps${el.angle?` · ${el.angle}°`:''}`;
+  ctx.font='bold 9px Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(bx+w/2-60,by+d/2-7,120,14);
+  ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fillText(lbl,bx+w/2,by+d/2);
+
   ctx.restore();
-  if (sel) { ctx.save(); if(el.angle){const ccx=cx0+w/2,ccy=cy0+d/2;ctx.translate(ccx,ccy);ctx.rotate(el.angle*Math.PI/180);ctx.translate(-ccx,-ccy);} drawResizeHandles(ctx, cx0, cy0, w, d); ctx.restore(); }
+  // Resize + angle handle
+  if(sel){
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle); ctx.translate(-cx,-cy);
+    drawResizeHandles(ctx,bx,by,w,d);
+    ctx.restore();
+    // Angle control handle (outside top-right, not rotated)
+    const hx=bx+w+20, hy=by-20;
+    ctx.fillStyle='#FFB000'; ctx.beginPath(); ctx.arc(hx,hy,7,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle='#000'; ctx.font='bold 8px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('∠',hx,hy);
+  }
 }
 
 function drawRailing(ctx, el, ppi, sel) {
@@ -1094,203 +1248,340 @@ function drawFurniture(ctx, el, ppi, sel) {
   const w=el.width*ppi, h=el.depth*ppi;
   ctx.save();
   if (el.rotation) {
-    ctx.translate(x+w/2, y+h/2); ctx.rotate(el.rotation*Math.PI/180); ctx.translate(-x-w/2,-y-h/2);
+    ctx.translate(x+w/2,y+h/2); ctx.rotate(el.rotation*Math.PI/180); ctx.translate(-x-w/2,-y-h/2);
   }
-  // Dispatch to sketch renderer based on furniture type
+
   const name = (el.name||'').toLowerCase();
-  if (/sofa|couch|sectional/.test(name)) drawSketchSofa(ctx,el,x,y,w,h,ppi);
-  else if (/love\s*seat/.test(name)) drawSketchLoveseat(ctx,el,x,y,w,h,ppi);
-  else if (/chair|rocker|swivel/.test(name)) drawSketchChair(ctx,el,x,y,w,h,ppi);
-  else if (/chaise|lounge/.test(name)) drawSketchChaise(ctx,el,x,y,w,h,ppi);
-  else if (/ottoman/.test(name)) drawSketchOttoman(ctx,el,x,y,w,h,ppi);
-  else if (/dining table|round table|oval table|rect.*table|surfboard|cocktail/.test(name)) drawSketchTable(ctx,el,x,y,w,h,ppi);
-  else if (/coffee table|end table|side table|chat table/.test(name)) drawSketchCoffeeTable(ctx,el,x,y,w,h,ppi);
-  else if (/adirondack/.test(name)) drawSketchAdirondack(ctx,el,x,y,w,h,ppi);
-  else if (/stool|barstool/.test(name)) drawSketchStool(ctx,el,x,y,w,h,ppi);
-  else drawSketchGeneric(ctx,el,x,y,w,h,ppi);
+  const f = el.color || '#8B6F5A';
+  const c = el.cushionColor || lighten(f, 35);
 
-  // Selection outline
-  ctx.strokeStyle = sel?'#4FC3F7':'rgba(255,255,255,0.15)';
-  ctx.lineWidth = sel?2:0.5;
-  ctx.strokeRect(x,y,w,h);
+  // Fill the box (exact catalog dimensions)
+  ctx.fillStyle = f;
+  ctx.fillRect(x, y, w, h);
 
-  // Name label always shown, no dims (static furniture)
+  // Draw sketch details on top of the box
+  if (/corner\s*section|corner\s*piece/.test(name)) drawSketchCornerSection(ctx,f,c,x,y,w,h);
+  else if (/armless\s*section|armless\s*chair/.test(name)) drawSketchArmlessSection(ctx,f,c,x,y,w,h);
+  else if (/left\s*arm/.test(name)) drawSketchSideSection(ctx,f,c,x,y,w,h,'left');
+  else if (/right\s*arm/.test(name)) drawSketchSideSection(ctx,f,c,x,y,w,h,'right');
+  else if (/chaise\s*section|chaise\s*extension/.test(name)) drawSketchChaise(ctx,f,c,x,y,w,h);
+  else if (/\d+.piece\s*sectional|sectional/.test(name)) drawSketchSofa(ctx,f,c,x,y,w,h);
+  else if (/sofa|3\s*seat|2\s*seat/.test(name)) drawSketchSofa(ctx,f,c,x,y,w,h);
+  else if (/love\s*seat/.test(name)) drawSketchLoveseat(ctx,f,c,x,y,w,h);
+  else if (/adirondack/.test(name)) drawSketchAdirondack(ctx,f,c,x,y,w,h);
+  else if (/chaise|lounge\s*chair/.test(name)) drawSketchChaise(ctx,f,c,x,y,w,h);
+  else if (/swivel|rocker|lounge\s*chair|club\s*chair/.test(name)) drawSketchChair(ctx,f,c,x,y,w,h);
+  else if (/dining\s*chair|padded\s*chair|arm\s*chair/.test(name)) drawSketchDiningChair(ctx,f,c,x,y,w,h);
+  else if (/stool|barstool|saddle/.test(name)) drawSketchStool(ctx,f,c,x,y,w,h);
+  else if (/ottoman/.test(name)) drawSketchOttoman(ctx,f,c,x,y,w,h);
+  else if (/round.*table|48.*dining|60.*dining|30.*round/.test(name)) drawSketchRoundTable(ctx,f,x,y,w,h);
+  else if (/oval.*table/.test(name)) drawSketchOvalTable(ctx,f,x,y,w,h);
+  else if (/fire\s*pit|fire\s*table/.test(name)) drawSketchFireTable(ctx,f,x,y,w,h);
+  else if (/surfboard|buffet/.test(name)) drawSketchSurfboard(ctx,f,x,y,w,h);
+  else if (/coffee\s*table|cocktail\s*table|conversation\s*table/.test(name)) drawSketchCoffeeTable(ctx,f,x,y,w,h);
+  else if (/end\s*table|side\s*table/.test(name)) drawSketchEndTable(ctx,f,x,y,w,h);
+  else if (/dining\s*table|rect.*table|table/.test(name)) drawSketchRectTable(ctx,f,x,y,w,h);
+  else drawSketchGenericSeating(ctx,f,c,x,y,w,h);
+
+  // Outer selection border
+  ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = sel ? 2 : 1;
+  ctx.strokeRect(x, y, w, h);
+
+  // Name badge at bottom of piece
   const shortName = abbreviateFurnName(el.name||'Furniture');
-  ctx.font=`bold ${Math.max(8,Math.min(11,w/6))}px Segoe UI,sans-serif`;
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  const tw=ctx.measureText(shortName).width;
-  if (tw < w-4 && h > 14) {
-    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(x+w/2-tw/2-2,y+h-13,tw+4,11);
-    ctx.fillStyle='#fff'; ctx.fillText(shortName,x+w/2,y+h-8);
+  const fontSize = Math.max(8, Math.min(11, w/8));
+  ctx.font = `bold ${fontSize}px Segoe UI,sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const tw = ctx.measureText(shortName).width;
+  if (tw < w-4 && h > 16) {
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(x+w/2-tw/2-3, y+h-fontSize-4, tw+6, fontSize+4);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(shortName, x+w/2, y+h-fontSize/2-2);
   }
   ctx.restore();
-  // NO resize handles — furniture dimensions are fixed
+  // NO resize handles — furniture is fixed catalog size
 }
 
 function abbreviateFurnName(name) {
-  // Shorten common catalog names
-  return name.replace(/\s*\(#[^)]+\)/,'').replace(/Collection/,'').replace(/Aluminum/,'Alum').trim().split(' ').slice(0,3).join(' ');
+  return name.replace(/\s*\(#[^)]+\)/g,'').replace(/Collection/gi,'').replace(/Aluminum/gi,'Alum').trim().split(' ').slice(0,4).join(' ');
 }
 
-// ── Sketch drawing helpers ──────────────────────────────────
-function drawSketchSofa(ctx,el,x,y,w,h,ppi) {
-  const f=el.color||'#8B6F5A', c=el.cushionColor||lighten(f,30);
-  // Back
-  ctx.fillStyle=f; ctx.fillRect(x,y,w,h*0.28); 
-  // Seat cushions (3 sections)
-  ctx.fillStyle=c;
-  const seats=Math.max(2,Math.round(w/(ppi*18)));
-  const sw=w/seats, sh=h*0.55;
-  for(let i=0;i<seats;i++){
-    roundRect(ctx,x+i*sw+2,y+h*0.28+2,sw-4,sh-4,4); ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1; ctx.stroke();
-  }
+// ─── Sketch detail functions (draw ON TOP of filled box) ────────────────
+
+function drawSketchSofa(ctx,f,c,x,y,w,h) {
+  const bh=h*0.28; // back height
+  // Back rail (darker)
+  ctx.fillStyle=darken(f,15); ctx.fillRect(x,y,w,bh);
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,bh);
   // Arms
-  ctx.fillStyle=f;
-  ctx.fillRect(x,y+h*0.28,w*0.07,sh);
-  ctx.fillRect(x+w-w*0.07,y+h*0.28,w*0.07,sh);
+  const aw=Math.min(w*0.1,10);
+  ctx.fillStyle=darken(f,10);
+  ctx.fillRect(x,y+bh,aw,h-bh); ctx.strokeRect(x,y+bh,aw,h-bh);
+  ctx.fillRect(x+w-aw,y+bh,aw,h-bh); ctx.strokeRect(x+w-aw,y+bh,aw,h-bh);
+  // Seat cushions
+  const seats=Math.max(2,Math.round(w/Math.max(1,h*0.8)));
+  const sw=(w-aw*2)/seats, sh=h*0.52;
+  ctx.fillStyle=c;
+  for(let i=0;i<seats;i++){
+    roundRect(ctx,x+aw+i*sw+2,y+bh+2,sw-4,sh-4,4); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
+  }
   // Front apron
-  ctx.fillRect(x,y+h*0.83,w,h*0.17);
-  // Legs
-  ctx.fillStyle=darken(f,40);
-  const legSz=Math.max(3,ppi*1.5);
-  [[x+legSz,y+h-legSz],[x+w-legSz*2,y+h-legSz],[x+legSz,y+h*0.28+legSz],[x+w-legSz*2,y+h*0.28+legSz]].forEach(([lx,ly])=>ctx.fillRect(lx,ly,legSz,legSz));
+  ctx.fillStyle=darken(f,10); ctx.fillRect(x,y+bh+sh,w,h-bh-sh);
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.8; ctx.strokeRect(x,y+bh+sh,w,h-bh-sh);
 }
 
-function drawSketchLoveseat(ctx,el,x,y,w,h,ppi) {
-  const f=el.color||'#8B6F5A', c=el.cushionColor||lighten(f,30);
-  ctx.fillStyle=f; ctx.fillRect(x,y,w,h*0.28);
+function drawSketchLoveseat(ctx,f,c,x,y,w,h) {
+  // Same as sofa but force 2 cushions
+  const bh=h*0.28;
+  ctx.fillStyle=darken(f,15); ctx.fillRect(x,y,w,bh);
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,bh);
+  const aw=Math.min(w*0.1,10);
+  ctx.fillStyle=darken(f,10);
+  ctx.fillRect(x,y+bh,aw,h-bh); ctx.fillRect(x+w-aw,y+bh,aw,h-bh);
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.8;
+  ctx.strokeRect(x,y+bh,aw,h-bh); ctx.strokeRect(x+w-aw,y+bh,aw,h-bh);
+  const sw=(w-aw*2)/2, sh=h*0.52;
   ctx.fillStyle=c;
-  const sh=h*0.55;
-  roundRect(ctx,x+w*0.07+2,y+h*0.28+2,w*0.43-4,sh-4,4); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1; ctx.stroke();
-  roundRect(ctx,x+w*0.5+2,y+h*0.28+2,w*0.43-4,sh-4,4); ctx.fill(); ctx.stroke();
-  ctx.fillStyle=f;
-  ctx.fillRect(x,y+h*0.28,w*0.07,sh);
-  ctx.fillRect(x+w-w*0.07,y+h*0.28,w*0.07,sh);
-  ctx.fillRect(x,y+h*0.83,w,h*0.17);
+  roundRect(ctx,x+aw+2,y+bh+2,sw-4,sh-4,4); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
+  roundRect(ctx,x+aw+sw+2,y+bh+2,sw-4,sh-4,4); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=darken(f,10); ctx.fillRect(x,y+bh+sh,w,h-bh-sh);
 }
 
-function drawSketchChair(ctx,el,x,y,w,h,ppi) {
-  const f=el.color||'#8B6F5A', c=el.cushionColor||lighten(f,30);
-  ctx.fillStyle=f; ctx.fillRect(x,y,w,h*0.3);
+function drawSketchChair(ctx,f,c,x,y,w,h) {
+  const bh=h*0.3;
+  ctx.fillStyle=darken(f,15); ctx.fillRect(x,y,w,bh);
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,bh);
+  const aw=Math.min(w*0.12,8);
+  ctx.fillStyle=darken(f,10);
+  ctx.fillRect(x,y+bh,aw,h-bh); ctx.fillRect(x+w-aw,y+bh,aw,h-bh);
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.8;
+  ctx.strokeRect(x,y+bh,aw,h-bh); ctx.strokeRect(x+w-aw,y+bh,aw,h-bh);
   ctx.fillStyle=c;
-  roundRect(ctx,x+w*0.1,y+h*0.32,w*0.8,h*0.5,5); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1; ctx.stroke();
-  ctx.fillStyle=f;
-  ctx.fillRect(x,y+h*0.3,w*0.1,h*0.52);
-  ctx.fillRect(x+w*0.9,y+h*0.3,w*0.1,h*0.52);
-  ctx.fillRect(x,y+h*0.82,w,h*0.18);
-  // Legs
-  const ls=Math.max(3,ppi*1.5);
-  ctx.fillStyle=darken(f,40);
-  [[x+ls,y+h-ls],[x+w-ls*2,y+h-ls],[x+ls,y+h*0.3+ls],[x+w-ls*2,y+h*0.3+ls]].forEach(([lx,ly])=>ctx.fillRect(lx,ly,ls,ls));
+  roundRect(ctx,x+aw+2,y+bh+2,w-aw*2-4,h*0.5-4,5); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
+  ctx.fillStyle=darken(f,10); ctx.fillRect(x,y+bh+h*0.5,w,h-bh-h*0.5);
 }
 
-function drawSketchChaise(ctx,el,x,y,w,h,ppi) {
-  const f=el.color||'#8B6F5A', c=el.cushionColor||lighten(f,30);
-  // Headrest end
-  ctx.fillStyle=f; ctx.fillRect(x,y,w*0.18,h);
-  // Main cushion
+function drawSketchDiningChair(ctx,f,c,x,y,w,h) {
+  // Simple: back slats + seat
+  const bh=h*0.35;
+  const slats=3;
+  const sw=w/slats;
+  ctx.fillStyle=darken(f,20);
+  for(let i=0;i<slats;i++){ ctx.fillRect(x+i*sw+2,y,sw-4,bh); ctx.strokeStyle='rgba(0,0,0,0.2)';ctx.lineWidth=0.7;ctx.strokeRect(x+i*sw+2,y,sw-4,bh); }
   ctx.fillStyle=c;
-  roundRect(ctx,x+w*0.18+2,y+2,w*0.82-4,h-4,6); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=1; ctx.stroke();
-  // Pillow lines
-  ctx.strokeStyle='rgba(0,0,0,0.1)'; ctx.lineWidth=0.8;
-  ctx.beginPath(); ctx.moveTo(x+w*0.18,y+h/3); ctx.lineTo(x+w,y+h/3); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x+w*0.18,y+h*2/3); ctx.lineTo(x+w,y+h*2/3); ctx.stroke();
+  roundRect(ctx,x+2,y+bh+1,w-4,h*0.42-2,4); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
+  ctx.fillStyle=f; ctx.fillRect(x,y+bh+h*0.42,w,h-bh-h*0.42);
+  // legs
+  const ls=Math.max(2,3); ctx.fillStyle=darken(f,40);
+  [[x+ls,y+h-ls*3],[x+w-ls*2,y+h-ls*3],[x+ls,y+bh+ls],[x+w-ls*2,y+bh+ls]].forEach(([lx,ly])=>ctx.fillRect(lx,ly,ls,ls));
 }
 
-function drawSketchOttoman(ctx,el,x,y,w,h,ppi) {
-  const f=el.color||'#8B6F5A', c=el.cushionColor||lighten(f,30);
-  ctx.fillStyle=f; ctx.fillRect(x,y,w,h);
+function drawSketchArmlessSection(ctx,f,c,x,y,w,h) {
+  // No arms — just back + cushion
+  const bh=h*0.28;
+  ctx.fillStyle=darken(f,15); ctx.fillRect(x,y,w,bh);
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,bh);
   ctx.fillStyle=c;
-  const pad=Math.min(w,h)*0.1;
-  roundRect(ctx,x+pad,y+pad,w-pad*2,h-pad*2,4); ctx.fill();
-  // X tufting
+  roundRect(ctx,x+2,y+bh+2,w-4,h*0.52-4,4); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
+  ctx.fillStyle=darken(f,10); ctx.fillRect(x,y+bh+h*0.52,w,h-bh-h*0.52);
+}
+
+function drawSketchSideSection(ctx,f,c,x,y,w,h,side) {
+  const bh=h*0.28;
+  ctx.fillStyle=darken(f,15); ctx.fillRect(x,y,w,bh);
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,bh);
+  const aw=Math.min(w*0.15,12);
+  ctx.fillStyle=darken(f,10);
+  if(side==='left'){ ctx.fillRect(x,y+bh,aw,h-bh); ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=0.8;ctx.strokeRect(x,y+bh,aw,h-bh); }
+  else { ctx.fillRect(x+w-aw,y+bh,aw,h-bh); ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=0.8;ctx.strokeRect(x+w-aw,y+bh,aw,h-bh); }
+  const padL = side==='left'?aw:0, padR = side==='right'?aw:0;
+  ctx.fillStyle=c;
+  roundRect(ctx,x+padL+2,y+bh+2,w-padL-padR-4,h*0.52-4,4); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
+  ctx.fillStyle=darken(f,10); ctx.fillRect(x,y+bh+h*0.52,w,h-bh-h*0.52);
+}
+
+function drawSketchCornerSection(ctx,f,c,x,y,w,h) {
+  // Square corner piece — cushion fills most of it, diagonal joint lines show where pieces connect
+  ctx.fillStyle=darken(f,15);
+  ctx.fillRect(x,y,w,h*0.28); // back top
+  ctx.fillRect(x,y,w*0.28,h); // back left
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1;
+  ctx.strokeRect(x,y,w,h*0.28);
+  ctx.strokeRect(x,y,w*0.28,h);
+  // Corner cushion
+  ctx.fillStyle=c;
+  roundRect(ctx,x+w*0.28+2,y+h*0.28+2,w*0.72-4,h*0.52-4,5); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
+  // Front apron
+  ctx.fillStyle=darken(f,10); ctx.fillRect(x+w*0.28,y+h*0.8,w*0.72,h*0.2);
+  ctx.fillRect(x,y+h*0.8,w*0.28,h*0.2);
+  // DIAGONAL joint lines — show where adjacent sectional pieces connect
+  ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+  // Right edge joint
+  ctx.beginPath(); ctx.moveTo(x+w,y+h*0.28); ctx.lineTo(x+w,y+h); ctx.stroke();
+  // Bottom edge joint
+  ctx.beginPath(); ctx.moveTo(x+w*0.28,y+h); ctx.lineTo(x+w,y+h); ctx.stroke();
+  // Corner angle indicator
+  ctx.strokeStyle='rgba(79,195,247,0.4)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(x+w*0.28,y+h*0.28); ctx.lineTo(x+w,y+h); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawSketchChaise(ctx,f,c,x,y,w,h) {
+  // Wide piece: head end (back) at left, foot at right
+  const hw=w*0.2;
+  ctx.fillStyle=darken(f,15); ctx.fillRect(x,y,hw,h);
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.strokeRect(x,y,hw,h);
+  ctx.fillStyle=c;
+  roundRect(ctx,x+hw+2,y+2,w-hw-4,h-4,6); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=0.8; ctx.stroke();
+  // Pleat lines
+  ctx.strokeStyle='rgba(0,0,0,0.1)'; ctx.lineWidth=0.7;
+  for(let i=1;i<4;i++){ctx.beginPath();ctx.moveTo(x+hw,y+i*h/4);ctx.lineTo(x+w,y+i*h/4);ctx.stroke();}
+}
+
+function drawSketchOttoman(ctx,f,c,x,y,w,h) {
+  ctx.fillStyle=darken(f,5); ctx.fillRect(x,y,w,h);
+  const pad=Math.min(w,h)*0.12;
+  ctx.fillStyle=c;
+  roundRect(ctx,x+pad,y+pad,w-pad*2,h-pad*2,5); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.8; ctx.stroke();
+  // X tufting lines
   ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(x+pad,y+pad); ctx.lineTo(x+w-pad,y+h-pad); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(x+w-pad,y+pad); ctx.lineTo(x+pad,y+h-pad); ctx.stroke();
 }
 
-function drawSketchTable(ctx,el,x,y,w,h,ppi) {
-  const f=el.color||'#C8A87A';
-  const isRound = w===h || /round|oval/.test((el.name||'').toLowerCase());
-  ctx.fillStyle=f;
-  if (isRound) {
-    ctx.beginPath(); ctx.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1.5; ctx.stroke();
-    // grain lines
-    ctx.strokeStyle='rgba(0,0,0,0.08)'; ctx.lineWidth=0.7;
-    for(let r=w*0.2;r<w/2;r+=w*0.2){ctx.beginPath();ctx.ellipse(x+w/2,y+h/2,r,r*(h/w),0,0,Math.PI*2);ctx.stroke();}
-  } else {
-    roundRect(ctx,x,y,w,h,4); ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1.5; ctx.stroke();
-    // Wood grain
-    ctx.strokeStyle='rgba(0,0,0,0.07)'; ctx.lineWidth=0.6;
-    for(let lx=x+w*0.15;lx<x+w;lx+=w*0.15){ctx.beginPath();ctx.moveTo(lx,y+2);ctx.lineTo(lx,y+h-2);ctx.stroke();}
-  }
-  // Legs (corner dots)
-  ctx.fillStyle=darken(f,40);
-  const ls=Math.max(2,ppi*1.2);
-  [[x+ls*1.5,y+ls*1.5],[x+w-ls*2.5,y+ls*1.5],[x+ls*1.5,y+h-ls*2.5],[x+w-ls*2.5,y+h-ls*2.5]].forEach(([lx,ly])=>{ctx.beginPath();ctx.arc(lx,ly,ls,0,Math.PI*2);ctx.fill();});
-}
-
-function drawSketchCoffeeTable(ctx,el,x,y,w,h,ppi) {
-  const f=el.color||'#A09070';
-  roundRect(ctx,x,y,w,h,3); ctx.fillStyle=f; ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=1.5; ctx.stroke();
-  // Glass top suggestion
-  ctx.fillStyle='rgba(180,220,240,0.2)';
-  roundRect(ctx,x+3,y+3,w-6,h-6,2); ctx.fill();
-  ctx.strokeStyle='rgba(180,220,240,0.4)'; ctx.lineWidth=0.5; ctx.stroke();
-  const ls=Math.max(2,ppi); ctx.fillStyle=darken(f,40);
-  [[x+ls,y+ls],[x+w-ls*2,y+ls],[x+ls,y+h-ls*2],[x+w-ls*2,y+h-ls*2]].forEach(([lx,ly])=>{ctx.beginPath();ctx.arc(lx,ly,ls,0,Math.PI*2);ctx.fill();});
-}
-
-function drawSketchAdirondack(ctx,el,x,y,w,h,ppi) {
-  const f=el.color||'#E8DFB0';
-  // Wide back slats
-  ctx.fillStyle=f;
+function drawSketchAdirondack(ctx,f,c,x,y,w,h) {
   const slats=5, sw2=(w-4)/slats;
-  for(let i=0;i<slats;i++){ctx.fillRect(x+2+i*sw2+1,y,sw2-2,h*0.65);}
-  // Wide seat
-  ctx.fillRect(x,y+h*0.55,w,h*0.25);
-  // Arms
-  ctx.fillRect(x,y+h*0.3,w*0.12,h*0.45);
-  ctx.fillRect(x+w-w*0.12,y+h*0.3,w*0.12,h*0.45);
-  // Legs
-  ctx.fillStyle=darken(f,30);
-  ctx.fillRect(x+w*0.1,y+h*0.8,w*0.12,h*0.2);
-  ctx.fillRect(x+w*0.78,y+h*0.8,w*0.12,h*0.2);
-  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1;
-  ctx.strokeRect(x,y,w,h);
-}
-
-function drawSketchStool(ctx,el,x,y,w,h,ppi) {
-  const f=el.color||'#8B6F5A', c=el.cushionColor||lighten(f,25);
-  ctx.fillStyle=c;
-  ctx.beginPath(); ctx.ellipse(x+w/2,y+h/3,w/2,h/3,0,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1.2; ctx.stroke();
-  // Legs (X)
-  ctx.strokeStyle=f; ctx.lineWidth=Math.max(1.5,ppi*0.8);
-  ctx.beginPath(); ctx.moveTo(x+w*0.2,y+h*0.55); ctx.lineTo(x+w*0.4,y+h); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x+w*0.8,y+h*0.55); ctx.lineTo(x+w*0.6,y+h); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x+w*0.2,y+h*0.55); ctx.lineTo(x+w*0.6,y+h); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x+w*0.8,y+h*0.55); ctx.lineTo(x+w*0.4,y+h); ctx.stroke();
-  // Footrest ring
-  ctx.beginPath(); ctx.ellipse(x+w/2,y+h*0.75,w*0.3,h*0.08,0,0,Math.PI*2); ctx.stroke();
-}
-
-function drawSketchGeneric(ctx,el,x,y,w,h,ppi) {
-  const f=el.color||'#8B6F5A';
-  ctx.fillStyle=f; roundRect(ctx,x,y,w,h,4); ctx.fill();
-  if (el.cushionColor) {
-    ctx.fillStyle=el.cushionColor;
-    const pad=Math.min(w,h)*0.12;
-    roundRect(ctx,x+pad,y+pad,w-pad*2,h-pad*2,3); ctx.fill();
+  ctx.fillStyle=darken(f,5);
+  for(let i=0;i<slats;i++){
+    ctx.fillRect(x+2+i*(sw2+1),y,sw2,h*0.62);
+    ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=0.7; ctx.strokeRect(x+2+i*(sw2+1),y,sw2,h*0.62);
   }
-  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle=f; ctx.fillRect(x,y+h*0.52,w,h*0.28);
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.7; ctx.strokeRect(x,y+h*0.52,w,h*0.28);
+  ctx.fillRect(x,y+h*0.3,w*0.13,h*0.48); ctx.fillRect(x+w-w*0.13,y+h*0.3,w*0.13,h*0.48);
+  ctx.fillStyle=darken(f,30);
+  ctx.fillRect(x+w*0.1,y+h*0.8,w*0.12,h*0.2); ctx.fillRect(x+w*0.78,y+h*0.8,w*0.12,h*0.2);
+}
+
+function drawSketchStool(ctx,f,c,x,y,w,h) {
+  // Seat (top view: circular/square cushion)
+  ctx.fillStyle=c;
+  ctx.beginPath(); ctx.ellipse(x+w/2,y+h*0.4,w*0.42,h*0.35,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1.2; ctx.stroke();
+  // Leg outlines (X cross pattern from above)
+  ctx.strokeStyle=darken(f,20); ctx.lineWidth=Math.max(1.5,2);
+  ctx.beginPath(); ctx.moveTo(x+w*0.25,y+h*0.65); ctx.lineTo(x+w*0.4,y+h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+w*0.75,y+h*0.65); ctx.lineTo(x+w*0.6,y+h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+w*0.25,y+h*0.65); ctx.lineTo(x+w*0.6,y+h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+w*0.75,y+h*0.65); ctx.lineTo(x+w*0.4,y+h); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(x+w/2,y+h*0.78,w*0.28,h*0.07,0,0,Math.PI*2); ctx.stroke();
+}
+
+function drawSketchRoundTable(ctx,f,x,y,w,h) {
+  const rx=w/2, ry=h/2;
+  ctx.fillStyle=lighten(f,20);
+  ctx.beginPath(); ctx.ellipse(x+rx,y+ry,rx,ry,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle=darken(f,20); ctx.lineWidth=2; ctx.stroke();
+  // Grain rings
+  ctx.strokeStyle='rgba(0,0,0,0.08)'; ctx.lineWidth=0.7;
+  for(let r=0.25;r<0.9;r+=0.25){ctx.beginPath();ctx.ellipse(x+rx,y+ry,rx*r,ry*r,0,0,Math.PI*2);ctx.stroke();}
+  // Leg dots
+  ctx.fillStyle=darken(f,40);
+  const legAngles=[45,135,225,315];
+  legAngles.forEach(a=>{const rad=a*Math.PI/180;ctx.beginPath();ctx.arc(x+rx+Math.cos(rad)*rx*0.7,y+ry+Math.sin(rad)*ry*0.7,3,0,Math.PI*2);ctx.fill();});
+}
+
+function drawSketchOvalTable(ctx,f,x,y,w,h) {
+  ctx.fillStyle=lighten(f,20);
+  ctx.beginPath(); ctx.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle=darken(f,20); ctx.lineWidth=2; ctx.stroke();
+  ctx.strokeStyle='rgba(0,0,0,0.07)'; ctx.lineWidth=0.6;
+  for(let i=1;i<5;i++){ctx.beginPath();ctx.moveTo(x+w*i/5,y+4);ctx.lineTo(x+w*i/5,y+h-4);ctx.stroke();}
+  ctx.fillStyle=darken(f,40);
+  [[x+w*0.12,y+h*0.15],[x+w*0.88,y+h*0.15],[x+w*0.12,y+h*0.85],[x+w*0.88,y+h*0.85]].forEach(([lx,ly])=>{ctx.beginPath();ctx.arc(lx,ly,3,0,Math.PI*2);ctx.fill();});
+}
+
+function drawSketchRectTable(ctx,f,x,y,w,h) {
+  ctx.fillStyle=lighten(f,15);
+  roundRect(ctx,x+2,y+2,w-4,h-4,3); ctx.fill();
+  ctx.strokeStyle=darken(f,20); ctx.lineWidth=1.5; ctx.stroke();
+  // Wood grain lines
+  ctx.strokeStyle='rgba(0,0,0,0.07)'; ctx.lineWidth=0.6;
+  const gstep=Math.max(8,w/8);
+  for(let lx=x+gstep;lx<x+w;lx+=gstep){ctx.beginPath();ctx.moveTo(lx,y+4);ctx.lineTo(lx,y+h-4);ctx.stroke();}
+  // Table edge highlight
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
+  roundRect(ctx,x+4,y+4,w-8,h-8,2); ctx.stroke();
+  ctx.fillStyle=darken(f,40);
+  [[x+6,y+6],[x+w-9,y+6],[x+6,y+h-9],[x+w-9,y+h-9]].forEach(([lx,ly])=>{ctx.beginPath();ctx.arc(lx,ly,3,0,Math.PI*2);ctx.fill();});
+}
+
+function drawSketchSurfboard(ctx,f,x,y,w,h) {
+  // Narrow table — tapered ends
+  ctx.fillStyle=lighten(f,15);
+  ctx.beginPath();
+  ctx.moveTo(x+w*0.05,y+h/2); ctx.bezierCurveTo(x,y,x+w*0.2,y,x+w/2,y);
+  ctx.bezierCurveTo(x+w*0.8,y,x+w,y,x+w*0.95,y+h/2);
+  ctx.bezierCurveTo(x+w,y+h,x+w*0.8,y+h,x+w/2,y+h);
+  ctx.bezierCurveTo(x+w*0.2,y+h,x,y+h,x+w*0.05,y+h/2);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle=darken(f,20); ctx.lineWidth=1.5; ctx.stroke();
+  ctx.strokeStyle='rgba(0,0,0,0.07)'; ctx.lineWidth=0.6;
+  for(let lx=x+w*0.2;lx<x+w*0.8;lx+=w*0.15){ctx.beginPath();ctx.moveTo(lx,y+4);ctx.lineTo(lx,y+h-4);ctx.stroke();}
+}
+
+function drawSketchCoffeeTable(ctx,f,x,y,w,h) {
+  ctx.fillStyle=lighten(f,10);
+  roundRect(ctx,x+2,y+2,w-4,h-4,4); ctx.fill();
+  ctx.strokeStyle=darken(f,20); ctx.lineWidth=1.5; ctx.stroke();
+  // Glass top suggestion (inner rect with blue tint)
+  ctx.fillStyle='rgba(180,220,240,0.15)';
+  roundRect(ctx,x+6,y+6,w-12,h-12,2); ctx.fill();
+  ctx.strokeStyle='rgba(180,220,240,0.35)'; ctx.lineWidth=0.7; ctx.stroke();
+  ctx.fillStyle=darken(f,40);
+  [[x+5,y+5],[x+w-8,y+5],[x+5,y+h-8],[x+w-8,y+h-8]].forEach(([lx,ly])=>{ctx.beginPath();ctx.arc(lx,ly,2.5,0,Math.PI*2);ctx.fill();});
+}
+
+function drawSketchEndTable(ctx,f,x,y,w,h) {
+  ctx.fillStyle=lighten(f,10);
+  roundRect(ctx,x+2,y+2,w-4,h-4,3); ctx.fill();
+  ctx.strokeStyle=darken(f,20); ctx.lineWidth=1.2; ctx.stroke();
+  ctx.fillStyle=darken(f,40);
+  const s=4;
+  [[x+s,y+s],[x+w-s*2,y+s],[x+s,y+h-s*2],[x+w-s*2,y+h-s*2]].forEach(([lx,ly])=>{ctx.beginPath();ctx.arc(lx,ly,2,0,Math.PI*2);ctx.fill();});
+}
+
+function drawSketchFireTable(ctx,f,x,y,w,h) {
+  ctx.fillStyle=darken(f,10);
+  roundRect(ctx,x+2,y+2,w-4,h-4,4); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=1.5; ctx.stroke();
+  // Fire bowl
+  const bx=x+w/2, by=y+h/2, br=Math.min(w,h)*0.25;
+  ctx.fillStyle='#4a3020'; ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#8B3A00'; ctx.beginPath(); ctx.arc(bx,by,br*0.65,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#E05A00'; ctx.beginPath(); ctx.arc(bx,by,br*0.4,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#FFB000'; ctx.beginPath(); ctx.arc(bx,by,br*0.18,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(bx,by,br,0,Math.PI*2); ctx.stroke();
+}
+
+function drawSketchGenericSeating(ctx,f,c,x,y,w,h) {
+  // Fallback: cushion inset
+  ctx.fillStyle=darken(f,10); ctx.fillRect(x,y,w,h);
+  const pad=Math.min(w,h)*0.15;
+  ctx.fillStyle=c;
+  roundRect(ctx,x+pad,y+pad,w-pad*2,h-pad*2,4); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.8; ctx.stroke();
 }
 
 function roundRect(ctx,x,y,w,h,r){
@@ -1302,15 +1593,23 @@ function roundRect(ctx,x,y,w,h,r){
   ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
   ctx.closePath();
 }
-function lighten(hex,amt){
-  let n=parseInt(hex.slice(1),16);
-  const r=Math.min(255,(n>>16)+amt), g=Math.min(255,((n>>8)&0xff)+amt), b=Math.min(255,(n&0xff)+amt);
-  return `rgb(${r},${g},${b})`;
+function hexToRgb(color) {
+  // Handle both '#rrggbb' and 'rgb(r,g,b)' formats
+  if (color.startsWith('rgb')) {
+    const m = color.match(/(\d+),\s*(\d+),\s*(\d+)/);
+    if (m) return [+m[1], +m[2], +m[3]];
+    return [139, 111, 90];
+  }
+  const n = parseInt((color||'#8B6F5A').replace('#',''), 16);
+  return [(n>>16)&255, (n>>8)&255, n&255];
 }
-function darken(hex,amt){
-  let n=parseInt(hex.slice(1),16);
-  const r=Math.max(0,(n>>16)-amt), g=Math.max(0,((n>>8)&0xff)-amt), b=Math.max(0,(n&0xff)-amt);
-  return `rgb(${r},${g},${b})`;
+function lighten(color, amt) {
+  const [r,g,b] = hexToRgb(color);
+  return `rgb(${Math.min(255,r+amt)},${Math.min(255,g+amt)},${Math.min(255,b+amt)})`;
+}
+function darken(color, amt) {
+  const [r,g,b] = hexToRgb(color);
+  return `rgb(${Math.max(0,r-amt)},${Math.max(0,g-amt)},${Math.max(0,b-amt)})`;
 }
 
 function drawPergola(ctx, el, ppi, sel) {
@@ -1393,28 +1692,50 @@ function drawFirePit(ctx, el, ppi, sel) {
 function drawMergedDeck(ctx, el, ppi, sel) {
   if (!el.outline || el.outline.length < 3) return;
   const pts = el.outline.map(p => ({ x: p.x*ppi+plan.panX, y: p.y*ppi+plan.panY }));
+
+  // Clip region
   ctx.beginPath();
   ctx.moveTo(pts[0].x, pts[0].y);
   pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
   ctx.closePath();
-  ctx.fillStyle = el.color || '#8B7260'; ctx.fill();
-  ctx.save(); ctx.clip();
-  ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=0.7;
-  const step=3.5*ppi;
-  if(step>3){
-    const bx=pts.reduce((m,p)=>Math.min(m,p.x),Infinity),ex=pts.reduce((m,p)=>Math.max(m,p.x),-Infinity);
-    const by=pts.reduce((m,p)=>Math.min(m,p.y),Infinity),ey=pts.reduce((m,p)=>Math.max(m,p.y),-Infinity);
-    for(let lx=bx;lx<=ex;lx+=step){ctx.beginPath();ctx.moveTo(lx,by);ctx.lineTo(lx,ey);ctx.stroke();}
+  ctx.fillStyle = el.color || '#8B7260';
+  ctx.fill();
+
+  // Board lines — HORIZONTAL (like real deck boards laid side to side)
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = 0.7;
+  const by = pts.reduce((m,p)=>Math.min(m,p.y), Infinity);
+  const ey = pts.reduce((m,p)=>Math.max(m,p.y), -Infinity);
+  const bx2 = pts.reduce((m,p)=>Math.min(m,p.x), Infinity);
+  const ex2 = pts.reduce((m,p)=>Math.max(m,p.x), -Infinity);
+  const boardStep = 3.5 * ppi;
+  if (boardStep > 2) {
+    for (let ly = by; ly <= ey; ly += boardStep) {
+      ctx.beginPath(); ctx.moveTo(bx2, ly); ctx.lineTo(ex2, ly); ctx.stroke();
+    }
   }
   ctx.restore();
 
-  // Border boards on merged deck too
+  // Border boards
   if (el.borderColor) {
     drawBorderBoards(ctx, pts, el.borderColor, ppi);
   }
 
-  ctx.strokeStyle=sel?'#4FC3F7':'rgba(255,255,255,0.35)'; ctx.lineWidth=sel?3:2; ctx.stroke();
-  // Edge dimensions only — no center label
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = sel ? 3 : 2;
+  ctx.stroke();
+
+  // Edge dimensions only
   drawDeckDimLabels(ctx, pts, ppi);
   if (sel) drawVertexHandles(ctx, el.outline, ppi);
 }
@@ -1505,9 +1826,11 @@ function getCanvasPos(e) {
 }
 
 function hitTestResizeHandle(cx, cy, el, ppi) {
-  const HIT = 8;
+  // Furniture is NEVER resizable — fixed catalog dimensions
+  if (el.type==='furniture') return null;
+  const HIT = isTouchDevice ? 16 : 8;
   let x, y, w, h;
-  if (el.type==='patio'||el.type==='pergola'||el.type==='hot-tub'||el.type==='furniture') {
+  if (el.type==='patio'||el.type==='pergola'||el.type==='hot-tub') {
     x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=(el.depth||el.height)*ppi;
   } else if (el.type==='stairs') {
     x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.depth*ppi;
@@ -1519,7 +1842,7 @@ function hitTestResizeHandle(cx, cy, el, ppi) {
     {name:'e',hx:x+w,hy:y+h/2},{name:'se',hx:x+w,hy:y+h},{name:'s',hx:x+w/2,hy:y+h},
     {name:'sw',hx:x,hy:y+h},{name:'w',hx:x,hy:y+h/2}
   ];
-  return handles.find(h => Math.abs(cx-h.hx)<HIT && Math.abs(cy-h.hy)<HIT) || null;
+  return handles.find(hh => Math.abs(cx-hh.hx)<HIT && Math.abs(cy-hh.hy)<HIT) || null;
 }
 
 function hitTestVertex(cx, cy, el, ppi) {
@@ -2568,10 +2891,104 @@ function buildPlanSummary() {
   return parts.join(', ') + '. Scale: 1 unit = 1 inch.';
 }
 
-function sendQuick(text) {
-  document.getElementById('chat-input').value=text;
-  sendChat();
+// Mobile chat bar — always-visible input at bottom of screen on iPad
+async function sendMobileChatBar() {
+  const inp = document.getElementById('mobile-chat-input');
+  if (!inp || isThinking) return;
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  inp.blur(); // dismiss keyboard after send
+
+  // Pipe through the main chat system — adds to desktop chat history too
+  addChatMsg(text, 'user');
+  chatHistory.push({ role:'user', content: text });
+
+  const localResult = parseCommand(text);
+  if (localResult.success) {
+    addChatMsg(localResult.msg, 'assistant');
+    chatHistory.push({ role:'assistant', content: localResult.msg });
+    // Show a brief toast on mobile confirming action
+    showMobileToast(localResult.msg);
+    return;
+  }
+  if (!localResult.msg.startsWith("I didn't understand")) {
+    addChatMsg(localResult.msg, 'err');
+    showMobileToast(localResult.msg, true);
+    return;
+  }
+
+  // Escalate to AI
+  isThinking = true;
+  showMobileToast('Thinking…');
+  document.getElementById('mobile-chat-input').disabled = true;
+
+  try {
+    const planSummary = buildPlanSummary();
+    const systemPrompt = `You are an AI assistant for a Deck & Patio Planner app. Translate user requests into commands. Current plan: ${planSummary}.
+
+COMMANDS: add deck WxH (ft) | add patio WxH [north/south/east/west] [with rounded NE/NW/SE/SW corner] | add stairs [north/south/east/west] N steps | add railing [north/south/east/west/around] | add posts every N feet | add pergola WxH | add hot tub WxH | add fire pit D | set deck color to COLOR | set deck border color to COLOR | set railing color to COLOR | merge deck segments | remove all TYPE | undo | clear plan
+
+Reply with commands (one per line) then ✓ explanation.`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:512,
+        system: systemPrompt, messages: chatHistory.slice(-6) })
+    });
+    const data = await response.json();
+    const reply = data.content?.[0]?.text || '';
+
+    isThinking = false;
+    document.getElementById('mobile-chat-input').disabled = false;
+
+    const lines = reply.trim().split('\n').filter(l=>l.trim());
+    let explanation = '', anySuccess = false;
+    for (const line of lines) {
+      if (line.startsWith('✓')) { explanation = line; continue; }
+      const r = parseCommand(line.trim());
+      if (r.success) anySuccess = true;
+    }
+    const finalMsg = explanation || (anySuccess ? '✓ Done!' : reply);
+    addChatMsg(finalMsg, anySuccess ? 'assistant' : 'err');
+    chatHistory.push({ role:'assistant', content: finalMsg });
+    showMobileToast(finalMsg, !anySuccess);
+
+  } catch(e) {
+    isThinking = false;
+    document.getElementById('mobile-chat-input').disabled = false;
+    addChatMsg("I didn't understand that. Try: \"Add deck 20x16\" or \"help\"", 'err');
+    showMobileToast("Try: \"Add deck 20x16\"", true);
+  }
 }
+
+// Mobile toast notification — brief popup confirming actions
+function showMobileToast(msg, isError=false) {
+  let toast = document.getElementById('mobile-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'mobile-toast';
+    toast.style.cssText = `
+      position:fixed;top:60px;left:50%;transform:translateX(-50%);
+      background:rgba(0,0,0,0.85);color:#fff;
+      padding:8px 18px;border-radius:20px;font-size:13px;font-weight:500;
+      z-index:200;pointer-events:none;transition:opacity .3s;
+      max-width:80vw;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      border:1px solid rgba(255,255,255,0.1);
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg.replace('✓ ','');
+  toast.style.borderColor = isError ? 'rgba(248,113,113,0.4)' : 'rgba(79,195,247,0.3)';
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+}
+
+// Wire Enter key on mobile chat bar
+document.getElementById('mobile-chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); sendMobileChatBar(); }
+});
 
 // Allow Enter in chat input
 document.getElementById('chat-input').addEventListener('keydown', e=>{
@@ -2582,71 +2999,116 @@ document.getElementById('chat-input').addEventListener('keydown', e=>{
 // CATALOG MODAL
 // ============================================================
 function openCatalog(mfr) {
-  catalogMfr=mfr;
-  const isMfr=mfr==='casual-comfort';
-  const catalog=isMfr?CC_CATALOG:NC_CATALOG;
-  const colors=isMfr?CC_COLORS:NC_COLORS;
-  catalogColor=colors[0];
-  catalogCushion=NC_CUSHIONS[0];
-  document.getElementById('catalog-title').textContent=isMfr?'Casual Comfort USA':'NorthCape Furniture';
+  catalogMfr = mfr;
+  const isCC = mfr === 'casual-comfort';
+  const catalog = isCC ? CC_CATALOG : NC_CATALOG;
+  const frameColors = isCC ? CC_COLORS : NC_COLORS;
+  const cushions = isCC ? CC_CUSHIONS : NC_CUSHIONS;
 
-  let html='';
-  catalog.forEach(cat=>{
-    html+=`<div class="cat-section"><h3>${cat.name}</h3>`;
-    cat.products.forEach(prod=>{
-      html+=`<div class="cat-item">
+  // Default selections
+  catalogColor = frameColors[0];
+  catalogCushion = cushions[0];
+
+  document.getElementById('catalog-title').textContent = isCC ? 'Casual Comfort USA' : 'NorthCape Furniture';
+
+  // Build product list
+  let html = '';
+  catalog.forEach(cat => {
+    html += `<div class="cat-section"><h3>${cat.name}</h3>`;
+    cat.products.forEach(prod => {
+      html += `<div class="cat-item">
         <span class="name">${prod.name}</span>
         <span class="dims">${prod.width}"×${prod.depth}"</span>
         <button class="add-btn" onclick="addFromCatalog(${JSON.stringify(prod).replace(/"/g,'&quot;')})">Add to Plan</button>
       </div>`;
     });
-    html+='</div>';
+    html += '</div>';
   });
-  document.getElementById('catalog-body').innerHTML=html;
+  document.getElementById('catalog-body').innerHTML = html;
 
-  // Footer with color swatches
-  let fhtml=`<div style="flex:1">
-    <div style="margin-bottom:6px"><span class="color-group-label">Frame / Body Color</span>
-    <div class="swatches" style="margin-top:4px">`;
-  colors.forEach((c,i)=>{
-    fhtml+=`<div class="swatch ${i===0?'sel':''}" style="background:${c.hex}" title="${c.name}" onclick="setCatalogColor(this,'${c.hex}')"></div>`;
+  // Build footer — frame colors + cushion colors side by side
+  // Frame color swatches
+  let fhtml = `<div style="width:100%">`;
+
+  // Row 1: Frame / Body Color
+  fhtml += `<div style="margin-bottom:10px">
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:5px">
+      Frame Color — <span id="cat-frame-label" style="color:var(--text2);text-transform:none;letter-spacing:0">${frameColors[0].name}</span>
+    </div>
+    <div class="swatches" id="cat-frame-swatches">`;
+  frameColors.forEach((c, i) => {
+    fhtml += `<div class="cat-frame-swatch swatch ${i===0?'sel':''}" style="background:${c.hex}" data-name="${c.name}" title="${c.name}" onclick="setCatalogFrame(this,'${c.hex}','${c.name}')"></div>`;
   });
-  fhtml+=`</div></div>`;
-  if(mfr==='northcape'){
-    fhtml+=`<div><span class="color-group-label">Cushion Fabric</span><div class="swatches" style="margin-top:4px">`;
-    NC_CUSHIONS.forEach((c,i)=>{
-      fhtml+=`<div class="swatch ${i===0?'sel':''}" style="background:${c.hex}" title="${c.name}" onclick="setCatalogCushion(this,'${c.hex}')"></div>`;
+  fhtml += `</div></div>`;
+
+  // Row 2: Cushion / Fabric Color — grouped by Sunbrella group, works for both mfrs
+  const groups = {};
+  cushions.forEach(c => {
+    const g = c.group || 'Sunbrella';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(c);
+  });
+
+  fhtml += `<div>
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:5px">
+      Cushion / Fabric — <span id="cat-cushion-label" style="color:var(--text2);text-transform:none;letter-spacing:0">${cushions[0].name}</span>
+    </div>`;
+
+  Object.entries(groups).forEach(([groupName, items]) => {
+    fhtml += `<div style="margin-bottom:4px">
+      <div style="font-size:9px;color:var(--text3);margin-bottom:2px">${groupName}</div>
+      <div class="swatches">`;
+    items.forEach((c, i) => {
+      const isFirst = groupName === Object.keys(groups)[0] && i === 0;
+      fhtml += `<div class="cat-cushion-swatch swatch ${isFirst?'sel':''}" style="background:${c.hex}" data-name="${c.name}" title="${c.name}" onclick="setCatalogCushion(this,'${c.hex}','${c.name}')"></div>`;
     });
-    fhtml+=`</div></div>`;
-  }
-  fhtml+='</div>';
-  document.getElementById('catalog-footer').innerHTML=fhtml;
-  document.getElementById('catalog-modal').style.display='flex';
+    fhtml += `</div></div>`;
+  });
+  fhtml += `</div></div>`;
+
+  document.getElementById('catalog-footer').innerHTML = fhtml;
+  document.getElementById('catalog-modal').style.display = 'flex';
 }
 
-function setCatalogColor(el, hex) {
-  catalogColor={hex};
-  document.querySelectorAll('#catalog-footer .swatch').forEach(s=>s.classList.remove('sel'));
+function setCatalogFrame(el, hex, name) {
+  catalogColor = { hex, name };
+  document.querySelectorAll('#catalog-footer .cat-frame-swatch').forEach(s => s.classList.remove('sel'));
   el.classList.add('sel');
+  const lbl = document.getElementById('cat-frame-label');
+  if (lbl) lbl.textContent = name;
 }
-function setCatalogCushion(el, hex) {
-  catalogCushion={hex};
+
+function setCatalogCushion(el, hex, name) {
+  catalogCushion = { hex, name };
+  document.querySelectorAll('#catalog-footer .cat-cushion-swatch').forEach(s => s.classList.remove('sel'));
   el.classList.add('sel');
+  const lbl = document.getElementById('cat-cushion-label');
+  if (lbl) lbl.textContent = name;
 }
+
+// Keep old setCatalogColor as alias so any remaining references don't break
+function setCatalogColor(el, hex) { setCatalogFrame(el, hex, hex); }
 
 function addFromCatalog(prod) {
-  const deck=plan.elements.find(e=>e.type==='deck'||e.type==='merged-deck');
+  const deck = plan.elements.find(e=>e.type==='deck'||e.type==='merged-deck');
   let px=120, py=120;
-  if(deck){const pts=deck.points||deck.outline;px=Math.min(...pts.map(p=>p.x))+12;py=Math.min(...pts.map(p=>p.y))+12;}
-  const el={
-    id:newId('furn'), type:'furniture', name:prod.name, x:px, y:py,
-    width:prod.width, depth:prod.depth, rotation:0,
-    color:catalogColor?.hex||'#8B6F5A', sourceUrl:prod.url,
-    manufacturer:catalogMfr
+  if (deck) {
+    const pts = deck.points||deck.outline;
+    px = Math.min(...pts.map(p=>p.x))+12;
+    py = Math.min(...pts.map(p=>p.y))+12;
+  }
+  const el = {
+    id: newId('furn'), type:'furniture', name:prod.name,
+    x:px, y:py, width:prod.width, depth:prod.depth,
+    rotation:0, color:catalogColor?.hex||'#8B6F5A',
+    sourceUrl:prod.url, manufacturer:catalogMfr
   };
-  if(catalogMfr==='northcape'&&catalogCushion) el.cushionColor=catalogCushion.hex;
+  // Apply cushion for both manufacturers if one is selected
+  if (catalogCushion?.hex) el.cushionColor = catalogCushion.hex;
   addElement(el);
-  addChatMsg(`Added "${prod.name}" (${prod.width}"×${prod.depth}") from catalog`, 'assistant');
+  const cushionName = catalogCushion?.name ? ` · ${catalogCushion.name}` : '';
+  const colorName = catalogColor?.name ? catalogColor.name : catalogColor?.hex || '';
+  addChatMsg(`Added "${prod.name}" — ${colorName}${cushionName}`, 'assistant');
 }
 
 function closeModal(id) { document.getElementById(id).style.display='none'; }
@@ -2655,30 +3117,36 @@ function closeModal(id) { document.getElementById(id).style.display='none'; }
 // ORDER LIST
 // ============================================================
 function openOrderList() {
-  const furn=plan.elements.filter(e=>e.type==='furniture'&&e.sourceUrl);
-  if(furn.length===0){alert('No catalog furniture on the plan. Import items from Casual Comfort or NorthCape first.'); return;}
-  let html='';
-  furn.forEach(el=>{
-    const color=el.color?ALL_COLORS.find(c=>c.hex===el.color)?.name||el.color:'—';
-    const cushion=el.cushionColor?NC_CUSHIONS.find(c=>c.hex===el.cushionColor)?.name||el.cushionColor:'—';
-    html+=`<div class="order-row">
+  const furn = plan.elements.filter(e=>e.type==='furniture'&&e.sourceUrl);
+  if (furn.length===0) { alert('No catalog furniture on the plan. Import items from Casual Comfort or NorthCape first.'); return; }
+  let html = '';
+  furn.forEach(el => {
+    const frameColor = ALL_COLORS.find(c=>c.hex===el.color)?.name || CC_COLORS.find(c=>c.hex===el.color)?.name || NC_COLORS.find(c=>c.hex===el.color)?.name || el.color || '—';
+    const cushionName = el.cushionColor ? (SUNBRELLA_CUSHIONS.find(c=>c.hex===el.cushionColor)?.name || el.cushionColor) : null;
+    const mfrLabel = el.manufacturer==='northcape' ? 'NorthCape' : el.manufacturer==='casual-comfort' ? 'Casual Comfort' : '';
+    html += `<div class="order-row">
       <div>
         <div style="font-weight:600;margin-bottom:2px">${el.name}</div>
-        <div style="font-size:11px;color:var(--text3)">Color: ${color}${el.manufacturer==='northcape'?' | Cushion: '+cushion:''}</div>
-        <div style="font-size:11px;color:var(--text3)">${el.width}"×${el.depth}"</div>
+        <div style="font-size:11px;color:var(--text3)">${mfrLabel} · ${el.width}"×${el.depth}"</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:2px;font-size:11px;color:var(--text3)">
+          <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${el.color};border:1px solid rgba(255,255,255,0.2);flex-shrink:0"></span>
+          Frame: ${frameColor}
+          ${cushionName ? `<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${el.cushionColor};border:1px solid rgba(255,255,255,0.2);flex-shrink:0;margin-left:8px"></span> Cushion: ${cushionName}` : ''}
+        </div>
       </div>
-      ${el.sourceUrl?`<a href="${el.sourceUrl}" target="_blank" class="order-url">View →</a>`:''}
+      ${el.sourceUrl ? `<a href="${el.sourceUrl}" target="_blank" class="order-url">View →</a>` : ''}
     </div>`;
   });
-  document.getElementById('order-body').innerHTML=html;
-  document.getElementById('order-modal').style.display='flex';
+  document.getElementById('order-body').innerHTML = html;
+  document.getElementById('order-modal').style.display = 'flex';
 }
 
 function copyOrderList() {
-  const furn=plan.elements.filter(e=>e.type==='furniture'&&e.sourceUrl);
-  const text=furn.map(el=>{
-    const color=ALL_COLORS.find(c=>c.hex===el.color)?.name||el.color;
-    return `${el.name} | ${el.width}"×${el.depth}" | Color: ${color}${el.cushionColor?` | Cushion: ${el.cushionColor}`:''}`;
+  const furn = plan.elements.filter(e=>e.type==='furniture'&&e.sourceUrl);
+  const text = furn.map(el => {
+    const frameColor = ALL_COLORS.find(c=>c.hex===el.color)?.name || CC_COLORS.find(c=>c.hex===el.color)?.name || NC_COLORS.find(c=>c.hex===el.color)?.name || el.color;
+    const cushionName = el.cushionColor ? (SUNBRELLA_CUSHIONS.find(c=>c.hex===el.cushionColor)?.name || el.cushionColor) : null;
+    return `${el.name} | ${el.width}"×${el.depth}" | Frame: ${frameColor}${cushionName ? ` | Cushion: ${cushionName}` : ''}`;
   }).join('\n');
   navigator.clipboard.writeText(text).then(()=>addChatMsg('Order list copied to clipboard!','assistant'));
 }
@@ -2961,29 +3429,8 @@ window.addEventListener('online', () => {
 
 // ============================================================
 // TOUCH HIT AREA EXPANSION (for resize handles on iPad)
-// ============================================================
-// Detect touch device and increase handle hit size
+// Touch device detection
 const isTouchDevice = () => window.matchMedia('(pointer:coarse)').matches;
-
-// Override hitTestResizeHandle to use larger hit area on touch
-const _origHitTestResize = hitTestResizeHandle;
-function hitTestResizeHandle(cx, cy, el, ppi) {
-  const HIT = isTouchDevice() ? 16 : 8; // 16px on touch, 8px on mouse
-  let x, y, w, h;
-  if (el.type==='patio'||el.type==='pergola'||el.type==='hot-tub'||el.type==='furniture') {
-    x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=(el.depth||el.height)*ppi;
-  } else if (el.type==='stairs') {
-    x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.depth*ppi;
-  } else if (el.type==='fire-pit') {
-    const r=(el.diameter||46)/2*ppi; x=el.x*ppi+plan.panX-r; y=el.y*ppi+plan.panY-r; w=r*2; h=r*2;
-  } else return null;
-  const handles = [
-    {name:'nw',hx:x,hy:y},{name:'n',hx:x+w/2,hy:y},{name:'ne',hx:x+w,hy:y},
-    {name:'e',hx:x+w,hy:y+h/2},{name:'se',hx:x+w,hy:y+h},{name:'s',hx:x+w/2,hy:y+h},
-    {name:'sw',hx:x,hy:y+h},{name:'w',hx:x,hy:y+h/2}
-  ];
-  return handles.find(h => Math.abs(cx-h.hx)<HIT && Math.abs(cy-h.hy)<HIT) || null;
-}
 
 // ============================================================
 // SNAP INDICATOR UPDATE
