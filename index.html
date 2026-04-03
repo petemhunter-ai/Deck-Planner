@@ -1555,182 +1555,176 @@ function abbreviateFurnName(name) {
 // ─── Sketch detail functions (draw ON TOP of filled box) ────────────────
 
 function drawSketchSofa(ctx,f,c,x,y,w,h) {
-  const bh=h*0.28; // back height
-  // Back rail (darker)
-  ctx.fillStyle=darken(f,15); ctx.fillRect(x,y,w,bh);
-  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,bh);
-  // Arms
-  const aw=Math.min(w*0.1,10);
-  ctx.fillStyle=darken(f,10);
-  ctx.fillRect(x,y+bh,aw,h-bh); ctx.strokeRect(x,y+bh,aw,h-bh);
-  ctx.fillRect(x+w-aw,y+bh,aw,h-bh); ctx.strokeRect(x+w-aw,y+bh,aw,h-bh);
+  const bh=h*0.26, aw=Math.min(w*0.09,9), sh=h*0.48;
+  // Back — curved arc rail
+  ctx.fillStyle=darken(f,18);
+  ctx.beginPath(); ctx.roundRect(x,y,w,bh,bh*0.35); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=0.8; ctx.stroke();
+  // Arms — round-ended tabs protruding beyond sides
+  ctx.fillStyle=darken(f,12);
+  [x-aw*0.3, x+w-aw*0.7].forEach((ax,i)=>{
+    ctx.beginPath(); ctx.roundRect(ax,y+bh+2,aw,h-bh-4,aw*0.45); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.7; ctx.stroke();
+  });
   // Seat cushions
-  const seats=Math.max(2,Math.round(w/Math.max(1,h*0.8)));
-  const sw=(w-aw*2)/seats, sh=h*0.52;
+  const seats=Math.max(2,Math.round(w/Math.max(1,h*0.75)));
+  const csw=(w-aw*1.4)/seats;
   ctx.fillStyle=c;
   for(let i=0;i<seats;i++){
-    roundRect(ctx,x+aw+i*sw+2,y+bh+2,sw-4,sh-4,4); ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(x+aw*0.7+i*csw+2,y+bh+3,csw-4,sh-4,5);
+    ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.7; ctx.stroke();
   }
-  // Front apron
-  ctx.fillStyle=darken(f,10); ctx.fillRect(x,y+bh+sh,w,h-bh-sh);
-  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.8; ctx.strokeRect(x,y+bh+sh,w,h-bh-sh);
+  // Front base
+  ctx.fillStyle=darken(f,8); ctx.fillRect(x,y+bh+sh,w,h-bh-sh);
 }
 
 function drawSketchLoveseat(ctx,f,c,x,y,w,h) {
-  // Same as sofa but force 2 cushions
-  const bh=h*0.28;
-  ctx.fillStyle=darken(f,15); ctx.fillRect(x,y,w,bh);
-  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,bh);
-  const aw=Math.min(w*0.1,10);
-  ctx.fillStyle=darken(f,10);
-  ctx.fillRect(x,y+bh,aw,h-bh); ctx.fillRect(x+w-aw,y+bh,aw,h-bh);
-  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.8;
-  ctx.strokeRect(x,y+bh,aw,h-bh); ctx.strokeRect(x+w-aw,y+bh,aw,h-bh);
-  const sw=(w-aw*2)/2, sh=h*0.52;
+  const bh=h*0.26, aw=Math.min(w*0.1,9), sh=h*0.48;
+  ctx.fillStyle=darken(f,18);
+  ctx.beginPath(); ctx.roundRect(x,y,w,bh,bh*0.35); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=0.8; ctx.stroke();
+  ctx.fillStyle=darken(f,12);
+  [x-aw*0.3, x+w-aw*0.7].forEach(ax=>{
+    ctx.beginPath(); ctx.roundRect(ax,y+bh+2,aw,h-bh-4,aw*0.45); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.7; ctx.stroke();
+  });
+  const csw=(w-aw*1.4)/2;
   ctx.fillStyle=c;
-  roundRect(ctx,x+aw+2,y+bh+2,sw-4,sh-4,4); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
-  roundRect(ctx,x+aw+sw+2,y+bh+2,sw-4,sh-4,4); ctx.fill(); ctx.stroke();
-  ctx.fillStyle=darken(f,10); ctx.fillRect(x,y+bh+sh,w,h-bh-sh);
+  for(let i=0;i<2;i++){
+    ctx.beginPath(); ctx.roundRect(x+aw*0.7+i*csw+2,y+bh+3,csw-4,sh-4,5);
+    ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.7; ctx.stroke();
+  }
+  ctx.fillStyle=darken(f,8); ctx.fillRect(x,y+bh+sh,w,h-bh-sh);
 }
 
 function drawSketchChair(ctx,f,c,x,y,w,h) {
-  const bh=h*0.3;
-  ctx.fillStyle=darken(f,15); ctx.fillRect(x,y,w,bh);
-  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,bh);
-  const aw=Math.min(w*0.12,8);
-  ctx.fillStyle=darken(f,10);
-  ctx.fillRect(x,y+bh,aw,h-bh); ctx.fillRect(x+w-aw,y+bh,aw,h-bh);
-  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.8;
-  ctx.strokeRect(x,y+bh,aw,h-bh); ctx.strokeRect(x+w-aw,y+bh,aw,h-bh);
+  const bh=h*0.28, aw=Math.min(w*0.12,9), sh=h*0.46;
+  ctx.fillStyle=darken(f,18);
+  ctx.beginPath(); ctx.roundRect(x,y,w,bh,bh*0.4); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=0.8; ctx.stroke();
+  ctx.fillStyle=darken(f,12);
+  [x-aw*0.3, x+w-aw*0.7].forEach(ax=>{
+    ctx.beginPath(); ctx.roundRect(ax,y+bh+2,aw,h-bh-4,aw*0.45); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.7; ctx.stroke();
+  });
   ctx.fillStyle=c;
-  roundRect(ctx,x+aw+2,y+bh+2,w-aw*2-4,h*0.5-4,5); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
-  ctx.fillStyle=darken(f,10); ctx.fillRect(x,y+bh+h*0.5,w,h-bh-h*0.5);
+  ctx.beginPath(); ctx.roundRect(x+aw*0.7+2,y+bh+3,w-aw*1.4-4,sh-4,6);
+  ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.7; ctx.stroke();
+  ctx.fillStyle=darken(f,8); ctx.fillRect(x,y+bh+sh,w,h-bh-sh);
 }
 
 function drawSketchDiningChair(ctx,f,c,x,y,w,h) {
-  // Simple: back slats + seat
-  const bh=h*0.35;
-  const slats=3;
-  const sw=w/slats;
-  ctx.fillStyle=darken(f,20);
-  for(let i=0;i<slats;i++){ ctx.fillRect(x+i*sw+2,y,sw-4,bh); ctx.strokeStyle='rgba(0,0,0,0.2)';ctx.lineWidth=0.7;ctx.strokeRect(x+i*sw+2,y,sw-4,bh); }
+  const bh=h*0.32, slats=3, sw=w/slats;
+  ctx.fillStyle=darken(f,22);
+  for(let i=0;i<slats;i++){
+    ctx.beginPath(); ctx.roundRect(x+i*sw+2,y,sw-4,bh,3); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.7; ctx.stroke();
+  }
   ctx.fillStyle=c;
-  roundRect(ctx,x+2,y+bh+1,w-4,h*0.42-2,4); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(x+2,y+bh+2,w-4,h*0.42-2,4); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.7; ctx.stroke();
   ctx.fillStyle=f; ctx.fillRect(x,y+bh+h*0.42,w,h-bh-h*0.42);
-  // legs
   const ls=Math.max(2,3); ctx.fillStyle=darken(f,40);
   [[x+ls,y+h-ls*3],[x+w-ls*2,y+h-ls*3],[x+ls,y+bh+ls],[x+w-ls*2,y+bh+ls]].forEach(([lx,ly])=>ctx.fillRect(lx,ly,ls,ls));
 }
 
 function drawSketchArmlessSection(ctx,f,c,x,y,w,h) {
-  // No arms — just back + cushion
-  const bh=h*0.28;
-  ctx.fillStyle=darken(f,15); ctx.fillRect(x,y,w,bh);
-  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,bh);
+  const bh=h*0.26, sh=h*0.48;
+  ctx.fillStyle=darken(f,18);
+  ctx.beginPath(); ctx.roundRect(x,y,w,bh,bh*0.3); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=0.8; ctx.stroke();
   ctx.fillStyle=c;
-  roundRect(ctx,x+2,y+bh+2,w-4,h*0.52-4,4); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
-  ctx.fillStyle=darken(f,10); ctx.fillRect(x,y+bh+h*0.52,w,h-bh-h*0.52);
+  ctx.beginPath(); ctx.roundRect(x+2,y+bh+3,w-4,sh-4,5);
+  ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.7; ctx.stroke();
+  ctx.fillStyle=darken(f,8); ctx.fillRect(x,y+bh+sh,w,h-bh-sh);
 }
 
 function drawSketchSideSection(ctx,f,c,x,y,w,h,side) {
-  const bh=h*0.28;
-  ctx.fillStyle=darken(f,15); ctx.fillRect(x,y,w,bh);
-  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,bh);
-  const aw=Math.min(w*0.15,12);
-  ctx.fillStyle=darken(f,10);
-  if(side==='left'){ ctx.fillRect(x,y+bh,aw,h-bh); ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=0.8;ctx.strokeRect(x,y+bh,aw,h-bh); }
-  else { ctx.fillRect(x+w-aw,y+bh,aw,h-bh); ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=0.8;ctx.strokeRect(x+w-aw,y+bh,aw,h-bh); }
-  const padL = side==='left'?aw:0, padR = side==='right'?aw:0;
+  const bh=h*0.26, aw=Math.min(w*0.14,10), sh=h*0.48;
+  ctx.fillStyle=darken(f,18);
+  ctx.beginPath(); ctx.roundRect(x,y,w,bh,bh*0.3); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=0.8; ctx.stroke();
+  ctx.fillStyle=darken(f,12);
+  const ax = side==='left' ? x-aw*0.3 : x+w-aw*0.7;
+  ctx.beginPath(); ctx.roundRect(ax,y+bh+2,aw,h-bh-4,aw*0.45); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.7; ctx.stroke();
+  const padL=side==='left'?aw*0.7:0, padR=side==='right'?aw*0.7:0;
   ctx.fillStyle=c;
-  roundRect(ctx,x+padL+2,y+bh+2,w-padL-padR-4,h*0.52-4,4); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
-  ctx.fillStyle=darken(f,10); ctx.fillRect(x,y+bh+h*0.52,w,h-bh-h*0.52);
+  ctx.beginPath(); ctx.roundRect(x+padL+2,y+bh+3,w-padL-padR-4,sh-4,5);
+  ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.7; ctx.stroke();
+  ctx.fillStyle=darken(f,8); ctx.fillRect(x,y+bh+sh,w,h-bh-sh);
 }
 
 function drawSketch45Corner(ctx,f,c,x,y,w,h) {
-  // The 45° sectional corner is a right-isosceles triangle in plan view.
-  // Two straight frame rails run along the left edge and top edge.
-  // The cushion fills the diagonal interior. The hypotenuse faces into the room.
-  const bw = Math.min(w*0.25, 9); // frame/back thickness
+  // CC catalog 45° corner: hexagonal shape — like two side sections meeting at 45°
+  // The piece has a back rail on two sides meeting at 45°, with a wedge cushion
+  // Rendered as a hexagon truncated from a square: cut the inner corner diagonally
+  const bw=Math.min(w*0.22,10); // back/frame thickness
 
-  // Clip to the triangle so all fills stay inside
+  // Shape: the piece sits in the bounding box but looks like a pentagon/wedge
+  // Two back rails: top edge and left edge (both are "back" sides connecting to adjacent pieces)
+  // The front face is the diagonal from top-right to bottom-left
+  // We clip everything to the triangular footprint
   ctx.save();
   ctx.beginPath();
-  ctx.moveTo(x, y);           // top-left
-  ctx.lineTo(x+w, y);         // top-right
-  ctx.lineTo(x, y+h);         // bottom-left
+  ctx.moveTo(x,    y);      // top-left (back corner)
+  ctx.lineTo(x+w,  y);      // top-right
+  ctx.lineTo(x+w,  y+h*0.5);// mid-right (diagonal starts here)
+  ctx.lineTo(x+w*0.5, y+h); // bottom-mid
+  ctx.lineTo(x,    y+h);    // bottom-left
   ctx.closePath();
+  ctx.fillStyle=f; ctx.fill();
   ctx.clip();
 
-  // Base fill
-  ctx.fillStyle = f;
-  ctx.fill();
+  // Back rails — top and left sides
+  ctx.fillStyle=darken(f,18);
+  // Top rail
+  ctx.beginPath(); ctx.roundRect(x,y,w,bw,bw*0.3); ctx.fill();
+  // Left rail
+  ctx.beginPath(); ctx.roundRect(x,y,bw,h,bw*0.3); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8;
+  ctx.strokeRect(x,y,w,bw); ctx.strokeRect(x,y,bw,h);
 
-  // Back rail — left edge (vertical)
-  ctx.fillStyle = darken(f,15);
-  ctx.fillRect(x, y, bw, h);
-
-  // Back rail — top edge (horizontal)
-  ctx.fillRect(x, y, w, bw);
-
-  ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
-  ctx.strokeRect(x, y, bw, h);
-  ctx.strokeRect(x, y, w, bw);
-
-  // Diagonal cushion — triangle inset from the hypotenuse
-  const inset = bw + 2;
-  ctx.fillStyle = c;
+  // Wedge cushion — fills the interior triangle
+  const ins=bw+3;
+  ctx.fillStyle=c;
   ctx.beginPath();
-  ctx.moveTo(x+inset, y+inset);
-  ctx.lineTo(x+w-inset, y+inset);
-  ctx.lineTo(x+inset, y+h-inset);
+  ctx.moveTo(x+ins,      y+ins);
+  ctx.lineTo(x+w-ins*0.5,y+ins);
+  ctx.lineTo(x+w-ins*0.5,y+h*0.5);
+  ctx.lineTo(x+w*0.5,    y+h-ins*0.5);
+  ctx.lineTo(x+ins,      y+h-ins*0.5);
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 0.8; ctx.stroke();
-
-  // Diagonal face line (hypotenuse — where it connects to adjacent sectional pieces)
-  ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
-  ctx.beginPath(); ctx.moveTo(x+w, y); ctx.lineTo(x, y+h); ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.8; ctx.stroke();
 
   ctx.restore();
 
-  // Triangle outline (overrides the full rect outline drawn in drawFurniture)
+  // Outer outline matching the shape
   ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x+w, y);
-  ctx.lineTo(x, y+h);
+  ctx.moveTo(x,    y);
+  ctx.lineTo(x+w,  y);
+  ctx.lineTo(x+w,  y+h*0.5);
+  ctx.lineTo(x+w*0.5, y+h);
+  ctx.lineTo(x,    y+h);
   ctx.closePath();
-  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1; ctx.stroke();
 }
 
 function drawSketchCornerSection(ctx,f,c,x,y,w,h) {
-  // Square corner piece — cushion fills most of it, diagonal joint lines show where pieces connect
-  ctx.fillStyle=darken(f,15);
-  ctx.fillRect(x,y,w,h*0.28); // back top
-  ctx.fillRect(x,y,w*0.28,h); // back left
-  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1;
-  ctx.strokeRect(x,y,w,h*0.28);
-  ctx.strokeRect(x,y,w*0.28,h);
-  // Corner cushion
+  const bw=h*0.25;
+  ctx.fillStyle=darken(f,18);
+  ctx.beginPath(); ctx.roundRect(x,y,w,bw,bw*0.35); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(x,y,bw,h,bw*0.35); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=0.8;
+  ctx.strokeRect(x,y,w,bw); ctx.strokeRect(x,y,bw,h);
   ctx.fillStyle=c;
-  roundRect(ctx,x+w*0.28+2,y+h*0.28+2,w*0.72-4,h*0.52-4,5); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
-  // Front apron
-  ctx.fillStyle=darken(f,10); ctx.fillRect(x+w*0.28,y+h*0.8,w*0.72,h*0.2);
-  ctx.fillRect(x,y+h*0.8,w*0.28,h*0.2);
-  // DIAGONAL joint lines
-  ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
-  ctx.beginPath(); ctx.moveTo(x+w,y+h*0.28); ctx.lineTo(x+w,y+h); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x+w*0.28,y+h); ctx.lineTo(x+w,y+h); ctx.stroke();
-  ctx.strokeStyle='rgba(79,195,247,0.4)'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(x+w*0.28,y+h*0.28); ctx.lineTo(x+w,y+h); ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(x+bw+2,y+bw+2,w-bw-4,h*0.5-4,5); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.7; ctx.stroke();
+  ctx.fillStyle=darken(f,8); ctx.fillRect(x+bw,y+bw+h*0.5,w-bw,h*0.2);
+  ctx.fillRect(x,y+bw+h*0.5,bw,h*0.2);
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.setLineDash([3,2]);
+  ctx.beginPath(); ctx.moveTo(x+bw,y+bw); ctx.lineTo(x+w,y+h); ctx.stroke();
   ctx.setLineDash([]);
 }
 
