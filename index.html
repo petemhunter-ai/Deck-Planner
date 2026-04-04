@@ -279,6 +279,10 @@ canvas{display:block;cursor:crosshair}
     <div style="width:1px;height:20px;background:var(--border2);margin:0 4px"></div>
     <span style="font-size:11px;color:var(--text3)">Snap:</span>
     <button class="btn active" id="snap-btn" onclick="toggleSnap()" title="Toggle grid snap">⊞ Grid Snap</button>
+    <div style="width:1px;height:20px;background:var(--border2);margin:0 4px"></div>
+    <button class="btn-merge" onclick="exportPlanFile()" title="Download plan as .json file to your device">⬇ Export</button>
+    <button class="btn-merge" onclick="document.getElementById('import-file-input').click()" title="Load a previously exported .json plan file">⬆ Import</button>
+    <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importPlanFile(this)"/>
   </div>
 
   <!-- MAIN -->
@@ -2028,20 +2032,11 @@ function drawHouse(ctx, el, ppi, sel) {
   const w=el.width*ppi, h=el.height*ppi;
   const f=el.color||'#B0A898';
 
-  // Fill
+  // Solid fill
   ctx.fillStyle=f; ctx.fillRect(x,y,w,h);
 
-  // Hatch pattern — diagonal lines (like architectural floor plan house fill)
-  ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
-  ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=0.7;
-  const spacing=10*ppi/2;
-  for(let d=-(h+w); d<w+h; d+=spacing){
-    ctx.beginPath(); ctx.moveTo(x+d,y); ctx.lineTo(x+d+h,y+h); ctx.stroke();
-  }
-  ctx.restore();
-
-  // Thick border — houses have a heavier wall line than patio
-  ctx.strokeStyle=sel?'#4FC3F7':darken(f,25)||'rgba(0,0,0,0.5)';
+  // Thick border
+  ctx.strokeStyle=sel?'#4FC3F7':'rgba(0,0,0,0.55)';
   ctx.lineWidth=sel?3:2.5; ctx.strokeRect(x,y,w,h);
 
   // Dimension labels
@@ -2057,7 +2052,7 @@ function drawHouse(ctx, el, ppi, sel) {
 
   // Label
   ctx.font='bold 11px Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillText('HOUSE',x+w/2,y+h/2);
+  ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillText('HOUSE',x+w/2,y+h/2);
 
   if(sel) drawResizeHandles(ctx,x,y,w,h);
 }
@@ -2443,11 +2438,7 @@ function hitTestResizeHandle(cx, cy, el, ppi) {
   if (el.type==='furniture'||el.type==='stairs'||el.type==='merged-stairs'||el.type==='deck'||el.type==='merged-deck'||el.type==='walkway') return null;
   const HIT = isTouchDevice ? 16 : 8;
   let x, y, w, h;
-  if (el.type==='patio') {
-    x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.height*ppi;
-  } else if (el.type==='pergola') {
-    x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.height*ppi;
-  } else if (el.type==='hot-tub') {
+  if (el.type==='patio'||el.type==='pergola'||el.type==='hot-tub'||el.type==='house') {
     x=el.x*ppi+plan.panX; y=el.y*ppi+plan.panY; w=el.width*ppi; h=el.height*ppi;
   } else if (el.type==='fire-pit') {
     const r=(el.diameter||46)/2*ppi; x=el.x*ppi+plan.panX-r; y=el.y*ppi+plan.panY-r; w=r*2; h=r*2;
@@ -4289,6 +4280,47 @@ function saveProject() {
   }
 }
 
+function exportPlanFile() {
+  const name = (projectName||'deck-plan').replace(/[^a-z0-9_\-]/gi,'_');
+  const data = JSON.stringify(plan, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name + '.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  addChatMsg(`Exported "${name}.json" to your device.`, 'assistant');
+}
+
+function importPlanFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.elements) throw new Error('Not a valid plan file');
+      plan = {
+        ...data,
+        pixelsPerInch: data.pixelsPerInch||2,
+        zoom: data.zoom||1,
+        panX: data.panX||40,
+        panY: data.panY||40,
+        gridSpacing: data.gridSpacing||1,
+        selectedId: null,
+      };
+      projectName = file.name.replace(/\.json$/i,'');
+      projectId = null; // imported file isn't tied to server
+      document.getElementById('project-name-label').textContent = projectName;
+      setDirty(false); redraw(); renderProps();
+      addChatMsg(`Imported "${file.name}" — ${plan.elements.length} elements loaded.`, 'assistant');
+    } catch(err) {
+      alert('Could not read plan file: ' + err.message);
+    }
+    input.value = ''; // reset so same file can be re-imported
+  };
+  reader.readAsText(file);
+}
 function createNewNamedProject() {
   const name=document.getElementById('new-project-name').value.trim()||'New Project';
   plan={elements:[],gridSpacing:1,pixelsPerInch:2,panX:40,panY:40,zoom:1,selectedId:null,northAngle:0};
