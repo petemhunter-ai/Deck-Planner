@@ -269,6 +269,8 @@ canvas{display:block;cursor:crosshair}
     <button class="btn" onclick="quickAdd('pillar')" title="Add pillar">⬜ Pillar</button>
     <button class="btn" onclick="quickAdd('hot-tub')" title="Add hot tub">♨️ Hot Tub</button>
     <button class="btn" onclick="quickAdd('fire-pit')" title="Add fire pit">🔥 Fire Pit</button>
+    <button class="btn" onclick="quickAdd('house')" title="Add house footprint">🏠 House</button>
+    <button class="btn" onclick="quickAdd('walkway')" title="Add curved walkway">〰️ Walkway</button>
     <div style="width:1px;height:20px;background:var(--border2);margin:0 4px"></div>
     <span style="font-size:11px;color:var(--text3)">Deck:</span>
     <button class="btn-merge" onclick="mergeDeckSegments()" id="merge-btn" title="Merge all adjacent deck segments">⟁ Merge Deck</button>
@@ -984,6 +986,15 @@ function quickAdd(type) {
     addElement({ id:newId('hottub'), type:'hot-tub', x:48, y:48, width:84, height:84, color:'#3a6a8a', label:"Hot Tub 7'×7'" });
   } else if (type === 'fire-pit') {
     addElement({ id:newId('firepit'), type:'fire-pit', x:48, y:48, diameter:46, color:'#4a3020', label:"Fire Pit" });
+  } else if (type === 'house') {
+    addElement({ id:newId('house'), type:'house', x:maxX+24, y:48, width:360, height:240, color:'#B0A898', label:"House" });
+  } else if (type === 'walkway') {
+    // Cubic bezier walkway: start, cp1, cp2, end — all in inches
+    // Default: gentle S-curve coming off the canvas south side
+    const cx = 120, cy = 300;
+    addElement({ id:newId('walkway'), type:'walkway',
+      pts:[{x:cx,y:cy},{x:cx+60,y:cy+60},{x:cx+120,y:cy+60},{x:cx+180,y:cy}],
+      width:36, color:'#A09888', label:"Walkway" });
   } else if (type === 'deck-band') {
     // Find the first merged-deck (or deck) that has a borderColor set
     const deck = plan.elements.find(e=>(e.type==='merged-deck'||e.type==='deck') && e.borderColor)
@@ -1072,13 +1083,15 @@ function redraw() {
     }
   }
 
-  // Draw order: patios → decks → stairs → deck-bands → everything else
+  // Draw order: house → patios → decks → stairs → deck-bands → walkways → everything else
+  const houses  = plan.elements.filter(e => e.type === 'house');
   const patios  = plan.elements.filter(e => e.type === 'patio');
   const decks   = plan.elements.filter(e => e.type === 'deck' || e.type === 'merged-deck');
   const stairs  = plan.elements.filter(e => e.type === 'stairs' || e.type === 'merged-stairs');
   const bands   = plan.elements.filter(e => e.type === 'deck-band');
-  const others  = plan.elements.filter(e => !['patio','deck','merged-deck','stairs','merged-stairs','deck-band'].includes(e.type));
-  [...patios, ...decks, ...stairs, ...bands, ...others].forEach(el => {
+  const walkways= plan.elements.filter(e => e.type === 'walkway');
+  const others  = plan.elements.filter(e => !['patio','deck','merged-deck','stairs','merged-stairs','deck-band','house','walkway'].includes(e.type));
+  [...houses, ...patios, ...decks, ...stairs, ...bands, ...walkways, ...others].forEach(el => {
     ctx.save();
     const sel = el.id === plan.selectedId;
     drawElement(ctx, el, ppi, sel);
@@ -1119,6 +1132,8 @@ function drawElement(ctx, el, ppi, sel) {
     case 'pergola':  drawPergola(ctx, el, ppi, sel); break;
     case 'hot-tub':  drawHotTub(ctx, el, ppi, sel); break;
     case 'fire-pit': drawFirePit(ctx, el, ppi, sel); break;
+    case 'house':    drawHouse(ctx, el, ppi, sel); break;
+    case 'walkway':  drawWalkway(ctx, el, ppi, sel); break;
     case 'merged-deck': drawMergedDeck(ctx, el, ppi, sel); break;
     case 'deck-band':   drawDeckBand(ctx, el, ppi, sel); break;
   }
@@ -1492,12 +1507,16 @@ function drawFurniture(ctx, el, ppi, sel) {
   const f = el.color || '#8B6F5A';
   const c = el.cushionColor || lighten(f, 35);
 
-  // Fill the box (exact catalog dimensions)
-  ctx.fillStyle = f;
-  ctx.fillRect(x, y, w, h);
+  const is45Corner = /corner\s*section|corner\s*piece/.test(name) && /45/.test(name);
+
+  // Fill the box (exact catalog dimensions) — skip for 45° corner which handles its own fill
+  if (!is45Corner) {
+    ctx.fillStyle = f;
+    ctx.fillRect(x, y, w, h);
+  }
 
   // Draw sketch details on top of the box
-  if (/corner\s*section|corner\s*piece/.test(name) && /45/.test(name)) drawSketch45Corner(ctx,f,c,x,y,w,h);
+  if (is45Corner) drawSketch45Corner(ctx,f,c,x,y,w,h);
   else if (/corner\s*section|corner\s*piece/.test(name)) drawSketchCornerSection(ctx,f,c,x,y,w,h);
   else if (/armless\s*section|armless\s*chair/.test(name)) drawSketchArmlessSection(ctx,f,c,x,y,w,h);
   else if (/left\s*arm/.test(name)) drawSketchSideSection(ctx,f,c,x,y,w,h,'left');
@@ -1521,11 +1540,23 @@ function drawFurniture(ctx, el, ppi, sel) {
   else if (/dining\s*table|rect.*table|table/.test(name)) drawSketchRectTable(ctx,f,x,y,w,h);
   else drawSketchGenericSeating(ctx,f,c,x,y,w,h);
 
-  // Outer selection border — triangle for 45° corner, rect for everything else
-  if (/corner\s*section|corner\s*piece/.test(name) && /45/.test(name)) {
-    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+w,y); ctx.lineTo(x,y+h); ctx.closePath();
-    ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.2)';
-    ctx.lineWidth = sel ? 2 : 1; ctx.stroke();
+  // Outer selection border — 45° corner draws its own outline, others get a rect
+  if (is45Corner) {
+    // drawSketch45Corner already drew its hexagon outline; just add selection highlight
+    if (sel) {
+      const ch = w*0.32;
+      ctx.beginPath();
+      ctx.moveTo(x,      y+ch);
+      ctx.lineTo(x+ch,   y);
+      ctx.lineTo(x+w-ch, y);
+      ctx.lineTo(x+w,    y+ch);
+      ctx.lineTo(x+w,    y+h-ch);
+      ctx.lineTo(x+w-ch, y+h);
+      ctx.lineTo(x+ch,   y+h);
+      ctx.lineTo(x,      y+h-ch);
+      ctx.closePath();
+      ctx.strokeStyle='#4FC3F7'; ctx.lineWidth=2; ctx.stroke();
+    }
   } else {
     ctx.strokeStyle = sel ? '#4FC3F7' : 'rgba(255,255,255,0.2)';
     ctx.lineWidth = sel ? 2 : 1;
@@ -1656,59 +1687,69 @@ function drawSketchSideSection(ctx,f,c,x,y,w,h,side) {
 }
 
 function drawSketch45Corner(ctx,f,c,x,y,w,h) {
-  // CC catalog 45° corner: hexagonal shape — like two side sections meeting at 45°
-  // The piece has a back rail on two sides meeting at 45°, with a wedge cushion
-  // Rendered as a hexagon truncated from a square: cut the inner corner diagonally
-  const bw=Math.min(w*0.22,10); // back/frame thickness
+  const ch = w*0.32; // chamfer amount
+  const bw = Math.min(w*0.18, 10); // back rail thickness
 
-  // Shape: the piece sits in the bounding box but looks like a pentagon/wedge
-  // Two back rails: top edge and left edge (both are "back" sides connecting to adjacent pieces)
-  // The front face is the diagonal from top-right to bottom-left
-  // We clip everything to the triangular footprint
+  // Hexagon vertices (chamfered square)
+  function hex() {
+    ctx.beginPath();
+    ctx.moveTo(x,      y+ch);
+    ctx.lineTo(x+ch,   y);
+    ctx.lineTo(x+w-ch, y);
+    ctx.lineTo(x+w,    y+ch);
+    ctx.lineTo(x+w,    y+h-ch);
+    ctx.lineTo(x+w-ch, y+h);
+    ctx.lineTo(x+ch,   y+h);
+    ctx.lineTo(x,      y+h-ch);
+    ctx.closePath();
+  }
+
+  // Base fill clipped to hex
   ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(x,    y);      // top-left (back corner)
-  ctx.lineTo(x+w,  y);      // top-right
-  ctx.lineTo(x+w,  y+h*0.5);// mid-right (diagonal starts here)
-  ctx.lineTo(x+w*0.5, y+h); // bottom-mid
-  ctx.lineTo(x,    y+h);    // bottom-left
-  ctx.closePath();
-  ctx.fillStyle=f; ctx.fill();
-  ctx.clip();
+  hex(); ctx.fillStyle=darken(f,5); ctx.fill(); ctx.clip();
 
-  // Back rails — top and left sides
-  ctx.fillStyle=darken(f,18);
-  // Top rail
-  ctx.beginPath(); ctx.roundRect(x,y,w,bw,bw*0.3); ctx.fill();
-  // Left rail
-  ctx.beginPath(); ctx.roundRect(x,y,bw,h,bw*0.3); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8;
-  ctx.strokeRect(x,y,w,bw); ctx.strokeRect(x,y,bw,h);
+  // Back rail along top edge
+  ctx.fillStyle=darken(f,20);
+  ctx.fillRect(x, y, w, bw);
+  // Back rail along left edge
+  ctx.fillRect(x, y, bw, h);
+  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.7;
+  ctx.strokeRect(x, y, w, bw);
+  ctx.strokeRect(x, y, bw, h);
 
-  // Wedge cushion — fills the interior triangle
-  const ins=bw+3;
+  // Dark inner corner dot where the two rails meet
+  ctx.fillStyle=darken(f,30);
+  ctx.beginPath(); ctx.arc(x+bw, y+bw, bw*0.65, 0, Math.PI*2); ctx.fill();
+
+  // Wedge cushion in the center
+  const ins = bw+3;
   ctx.fillStyle=c;
   ctx.beginPath();
-  ctx.moveTo(x+ins,      y+ins);
-  ctx.lineTo(x+w-ins*0.5,y+ins);
-  ctx.lineTo(x+w-ins*0.5,y+h*0.5);
-  ctx.lineTo(x+w*0.5,    y+h-ins*0.5);
-  ctx.lineTo(x+ins,      y+h-ins*0.5);
+  ctx.moveTo(x+ins,         y+ins);
+  ctx.lineTo(x+w-ins-ch*0.4, y+ins);
+  ctx.lineTo(x+w-ins*0.5,   y+h*0.5);
+  ctx.lineTo(x+w*0.5,       y+h-ins*0.5);
+  ctx.lineTo(x+ins,         y+h-ins-ch*0.4);
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=0.8; ctx.stroke();
+  ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.lineWidth=0.8; ctx.stroke();
+
+  // Front apron strip
+  ctx.fillStyle=darken(f,10);
+  ctx.fillRect(x+bw, y+h-bw*1.8, w-bw, bw*1.8);
+  ctx.fillRect(x,    y+h-bw*1.8, bw,   bw*1.8);
 
   ctx.restore();
 
-  // Outer outline matching the shape
-  ctx.beginPath();
-  ctx.moveTo(x,    y);
-  ctx.lineTo(x+w,  y);
-  ctx.lineTo(x+w,  y+h*0.5);
-  ctx.lineTo(x+w*0.5, y+h);
-  ctx.lineTo(x,    y+h);
-  ctx.closePath();
-  ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1; ctx.stroke();
+  // Hexagon outline
+  hex();
+  ctx.strokeStyle='rgba(255,255,255,0.28)'; ctx.lineWidth=1.2; ctx.stroke();
+
+  // Dashed connection faces (where sofas attach — the two chamfer edges)
+  ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(x,y+ch); ctx.lineTo(x+ch,y); ctx.stroke();       // top-left
+  ctx.beginPath(); ctx.moveTo(x+w-ch,y+h); ctx.lineTo(x+w,y+h-ch); ctx.stroke(); // bottom-right
+  ctx.setLineDash([]);
 }
 
 function drawSketchCornerSection(ctx,f,c,x,y,w,h) {
@@ -1982,6 +2023,134 @@ function drawFirePit(ctx, el, ppi, sel) {
   if (sel) drawResizeHandles(ctx,cx-r,cy-r,r*2,r*2);
 }
 
+function drawHouse(ctx, el, ppi, sel) {
+  const x=el.x*ppi+plan.panX, y=el.y*ppi+plan.panY;
+  const w=el.width*ppi, h=el.height*ppi;
+  const f=el.color||'#B0A898';
+
+  // Fill
+  ctx.fillStyle=f; ctx.fillRect(x,y,w,h);
+
+  // Hatch pattern — diagonal lines (like architectural floor plan house fill)
+  ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+  ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=0.7;
+  const spacing=10*ppi/2;
+  for(let d=-(h+w); d<w+h; d+=spacing){
+    ctx.beginPath(); ctx.moveTo(x+d,y); ctx.lineTo(x+d+h,y+h); ctx.stroke();
+  }
+  ctx.restore();
+
+  // Thick border — houses have a heavier wall line than patio
+  ctx.strokeStyle=sel?'#4FC3F7':darken(f,25)||'rgba(0,0,0,0.5)';
+  ctx.lineWidth=sel?3:2.5; ctx.strokeRect(x,y,w,h);
+
+  // Dimension labels
+  const wLbl=fmtFt(el.width), hLbl=fmtFt(el.height);
+  ctx.font='bold 10px Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  const wTw=ctx.measureText(wLbl).width;
+  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(x+w/2-wTw/2-3,y-14,wTw+6,13);
+  ctx.fillStyle='#e8ecf4'; ctx.fillText(wLbl,x+w/2,y-8);
+  ctx.save(); ctx.translate(x+w+14,y+h/2); ctx.rotate(Math.PI/2);
+  const hTw=ctx.measureText(hLbl).width;
+  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(-hTw/2-3,-6,hTw+6,13);
+  ctx.fillStyle='#e8ecf4'; ctx.fillText(hLbl,0,0); ctx.restore();
+
+  // Label
+  ctx.font='bold 11px Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillText('HOUSE',x+w/2,y+h/2);
+
+  if(sel) drawResizeHandles(ctx,x,y,w,h);
+}
+
+function drawWalkway(ctx, el, ppi, sel) {
+  if(!el.pts||el.pts.length<4) return;
+  const p=el.pts.map(pt=>({x:pt.x*ppi+plan.panX, y:pt.y*ppi+plan.panY}));
+  const hw=(el.width||36)/2*ppi;
+  const f=el.color||'#A09888';
+
+  // Build the thick stroke as a filled path (offset the bezier by hw each side)
+  // Use canvas lineWidth trick: stroke with thick line, then clip
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(p[0].x,p[0].y);
+  ctx.bezierCurveTo(p[1].x,p[1].y, p[2].x,p[2].y, p[3].x,p[3].y);
+  ctx.strokeStyle=f; ctx.lineWidth=hw*2; ctx.lineCap='round'; ctx.stroke();
+
+  // Clip the thick stroke area for texture
+  ctx.save();
+  ctx.lineWidth=hw*2+2;
+  ctx.beginPath();
+  ctx.moveTo(p[0].x,p[0].y);
+  ctx.bezierCurveTo(p[1].x,p[1].y, p[2].x,p[2].y, p[3].x,p[3].y);
+  ctx.strokeStyle='rgba(0,0,0,0)'; ctx.stroke(); // just for clip path via a workaround
+  ctx.restore();
+
+  // Paver lines — subtle transverse lines along the path
+  const steps=20;
+  ctx.strokeStyle='rgba(0,0,0,0.1)'; ctx.lineWidth=0.7;
+  for(let i=1;i<steps;i++){
+    const t=i/steps;
+    const mt=1-t;
+    // Point on bezier
+    const bx=mt*mt*mt*p[0].x+3*mt*mt*t*p[1].x+3*mt*t*t*p[2].x+t*t*t*p[3].x;
+    const by=mt*mt*mt*p[0].y+3*mt*mt*t*p[1].y+3*mt*t*t*p[2].y+t*t*t*p[3].y;
+    // Tangent
+    const tx2=3*(mt*mt*(p[1].x-p[0].x)+2*mt*t*(p[2].x-p[1].x)+t*t*(p[3].x-p[2].x));
+    const ty2=3*(mt*mt*(p[1].y-p[0].y)+2*mt*t*(p[2].y-p[1].y)+t*t*(p[3].y-p[2].y));
+    const tlen=Math.hypot(tx2,ty2)||1;
+    const nx=-ty2/tlen*hw, ny=tx2/tlen*hw;
+    ctx.beginPath(); ctx.moveTo(bx+nx,by+ny); ctx.lineTo(bx-nx,by-ny); ctx.stroke();
+  }
+  ctx.restore();
+
+  // Outline edges — two lines parallel to bezier
+  [1,-1].forEach(side=>{
+    ctx.beginPath();
+    // Sample offset points
+    const N=40;
+    for(let i=0;i<=N;i++){
+      const t=i/N, mt=1-t;
+      const bx=mt*mt*mt*p[0].x+3*mt*mt*t*p[1].x+3*mt*t*t*p[2].x+t*t*t*p[3].x;
+      const by=mt*mt*mt*p[0].y+3*mt*mt*t*p[1].y+3*mt*t*t*p[2].y+t*t*t*p[3].y;
+      const tx2=3*(mt*mt*(p[1].x-p[0].x)+2*mt*t*(p[2].x-p[1].x)+t*t*(p[3].x-p[2].x));
+      const ty2=3*(mt*mt*(p[1].y-p[0].y)+2*mt*t*(p[2].y-p[1].y)+t*t*(p[3].y-p[2].y));
+      const tlen=Math.hypot(tx2,ty2)||1;
+      const ox=(-ty2/tlen)*hw*side, oy=(tx2/tlen)*hw*side;
+      if(i===0) ctx.moveTo(bx+ox,by+oy); else ctx.lineTo(bx+ox,by+oy);
+    }
+    ctx.strokeStyle=sel?'#4FC3F7':'rgba(255,255,255,0.3)'; ctx.lineWidth=sel?2:1.2; ctx.stroke();
+  });
+
+  // Control point handles when selected
+  if(sel){
+    // Draw control arm lines
+    ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(p[0].x,p[0].y); ctx.lineTo(p[1].x,p[1].y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p[3].x,p[3].y); ctx.lineTo(p[2].x,p[2].y); ctx.stroke();
+    ctx.setLineDash([]);
+    // Endpoint handles (white squares)
+    [0,3].forEach(i=>{
+      ctx.fillStyle='#fff'; ctx.strokeStyle='#4FC3F7'; ctx.lineWidth=2;
+      ctx.fillRect(p[i].x-5,p[i].y-5,10,10); ctx.strokeRect(p[i].x-5,p[i].y-5,10,10);
+    });
+    // Control point handles (cyan circles)
+    [1,2].forEach(i=>{
+      ctx.fillStyle='#4FC3F7'; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(p[i].x,p[i].y,5,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    });
+  }
+
+  // Width label at midpoint
+  const tmid=0.5, mmid=1-tmid;
+  const mx=mmid*mmid*mmid*p[0].x+3*mmid*mmid*tmid*p[1].x+3*mmid*tmid*tmid*p[2].x+tmid*tmid*tmid*p[3].x;
+  const my=mmid*mmid*mmid*p[0].y+3*mmid*mmid*tmid*p[1].y+3*mmid*tmid*tmid*p[2].y+tmid*tmid*tmid*p[3].y;
+  const lbl=fmtFt(el.width||36)+' wide';
+  ctx.font='bold 9px Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  const tw=ctx.measureText(lbl).width;
+  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(mx-tw/2-3,my-7,tw+6,14);
+  ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fillText(lbl,mx,my);
+}
+
 function drawMergedDeck(ctx, el, ppi, sel) {
   if (!el.outline || el.outline.length < 3) return;
   const pts = el.outline.map(p => ({ x: p.x*ppi+plan.panX, y: p.y*ppi+plan.panY }));
@@ -2216,7 +2385,7 @@ function getCanvasPos(e) {
 }
 
 function hitTestResizeHandle(cx, cy, el, ppi) {
-  if (el.type==='furniture'||el.type==='stairs'||el.type==='merged-stairs'||el.type==='deck'||el.type==='merged-deck') return null;
+  if (el.type==='furniture'||el.type==='stairs'||el.type==='merged-stairs'||el.type==='deck'||el.type==='merged-deck'||el.type==='walkway') return null;
   const HIT = isTouchDevice ? 16 : 8;
   let x, y, w, h;
   if (el.type==='patio') {
@@ -2288,9 +2457,24 @@ function hitTestElement(cx, cy, ppi) {
     if (el.type==='deck'||el.type==='merged-deck') {
       const pts = el.points||el.outline;
       if (pointInPolygon(ix,iy,pts)) return el.id;
-    } else if (el.type==='patio'||el.type==='hot-tub') {
+    } else if (el.type==='patio'||el.type==='hot-tub'||el.type==='house') {
       if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+(el.height||el.depth)) return el.id;
-    } else if (el.type==='pergola') {
+    } else if (el.type==='walkway') {
+      // Hit test: check if click is within hw inches of the bezier curve
+      if(el.pts&&el.pts.length===4){
+        const hw=(el.width||36)/2;
+        const p=el.pts;
+        for(let i=0;i<=30;i++){
+          const t=i/30, mt=1-t;
+          const bx=mt*mt*mt*p[0].x+3*mt*mt*t*p[1].x+3*mt*t*t*p[2].x+t*t*t*p[3].x;
+          const by=mt*mt*mt*p[0].y+3*mt*mt*t*p[1].y+3*mt*t*t*p[2].y+t*t*t*p[3].y;
+          if(Math.hypot(ix-bx,iy-by)<hw) return el.id;
+        }
+        // Also hit-test control points when selected
+        if(el.id===plan.selectedId){
+          for(const pt of p){ if(Math.hypot(ix-pt.x,iy-pt.y)<8) return el.id; }
+        }
+      }
       if (ix>=el.x&&ix<=el.x+el.width&&iy>=el.y&&iy<=el.y+el.height) return el.id;
     } else if (el.type==='stairs'||el.type==='merged-stairs') {
       const pts = el.points||el.outline;
@@ -2360,6 +2544,17 @@ function onMouseDown(e) {
   // may return null or a different element for those clicks.
   const selEl = plan.elements.find(el=>el.id===plan.selectedId);
   if (selEl) {
+    // Walkway: hit-test control points (all 4: 2 endpoints + 2 bezier handles)
+    if (selEl.type==='walkway' && selEl.pts) {
+      const ipos=canvasToInches(pos.x,pos.y);
+      const HIT=isTouchDevice?14:8;
+      for(let i=0;i<selEl.pts.length;i++){
+        if(Math.hypot(ipos.x-selEl.pts[i].x,ipos.y-selEl.pts[i].y)<HIT){
+          isDragVertex=true; dragVertexId=selEl.id; dragVertexIdx=i;
+          setDirty(true); return;
+        }
+      }
+    }
     // Deck / merged-deck / stairs: vertex corner dots and midpoint insert dots
     if (selEl.type==='deck' || selEl.type==='merged-deck' || selEl.type==='stairs' || selEl.type==='merged-stairs') {
       const pts = selEl.points || selEl.outline;
@@ -2413,6 +2608,9 @@ function onMouseDown(e) {
         const cx=pts.reduce((s,p)=>s+p.x,0)/pts.length;
         const cy=pts.reduce((s,p)=>s+p.y,0)/pts.length;
         dragOffX=ipos.x-cx; dragOffY=ipos.y-cy;
+      } else if (el.type==='walkway') {
+        // Store offset from first bezier endpoint
+        dragOffX=ipos.x-el.pts[0].x; dragOffY=ipos.y-el.pts[0].y;
       } else if (el.type==='deck-band') {
         dragOffY=ipos.y-el.y; dragOffX=0;
       } else if (el.type==='railing') {
@@ -2435,6 +2633,14 @@ function onMouseMove(e) {
     const el = plan.elements.find(e=>e.id===dragVertexId);
     if (el) {
       const ipos = canvasToInches(pos.x, pos.y);
+
+      // Walkway: drag any of the 4 bezier control points freely
+      if (el.type === 'walkway' && el.pts) {
+        el.pts[dragVertexIdx].x = snapToGrid(ipos.x);
+        el.pts[dragVertexIdx].y = snapToGrid(ipos.y);
+        setDirty(true); redraw(); return;
+      }
+
       const pts = el.points || el.outline;
 
       // For rotated stairs, rotate the mouse position back into local (unrotated) space
@@ -2495,7 +2701,12 @@ function onMouseMove(e) {
     if(!el) return;
     const ipos=canvasToInches(pos.x,pos.y);
     const nx=snapToGrid(ipos.x-dragOffX), ny=snapToGrid(ipos.y-dragOffY);
-    if(el.type==='deck'||el.type==='merged-deck'||el.type==='stairs'||el.type==='merged-stairs'){
+    if(el.type==='walkway' && el.pts){
+      // Move all 4 control points together
+      const newX=snapToGrid(ipos.x-dragOffX), newY=snapToGrid(ipos.y-dragOffY);
+      const dx=newX-el.pts[0].x, dy=newY-el.pts[0].y;
+      el.pts.forEach(p=>{p.x+=dx; p.y+=dy;});
+    } else if(el.type==='deck'||el.type==='merged-deck'||el.type==='stairs'||el.type==='merged-stairs'){
       const pts=el.points||el.outline;
       const targetCx = snapToGrid(ipos.x - dragOffX);
       const targetCy = snapToGrid(ipos.y - dragOffY);
@@ -3167,6 +3378,18 @@ function renderProps() {
     html+=`<div class="prop-actions">
       <button class="btn-merge" onclick="mergeDeckSegments()" style="font-size:11px">⟁ Merge Segments</button>
     </div>`;
+  } else if(el.type==='house'){
+    html+=`<div class="prop-grid">
+      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width)}" oninput="updateProp('width',+this.value)" min="24" step="1"/></div>
+      <div class="prop-row"><label>Depth (in)</label><input type="number" value="${Math.round(el.height)}" oninput="updateProp('height',+this.value)" min="24" step="1"/></div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:2px">Drag corner/edge handles to resize · drag body to move</div>`;
+  } else if(el.type==='walkway'){
+    const len = el.pts ? Math.round(Math.hypot(el.pts[3].x-el.pts[0].x, el.pts[3].y-el.pts[0].y)) : 0;
+    html+=`<div class="prop-grid">
+      <div class="prop-row"><label>Width (in)</label><input type="number" value="${Math.round(el.width||36)}" oninput="updateProp('width',+this.value)" min="12" step="1"/></div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:2px">Drag white endpoint handles to move ends · drag cyan handles to curve · drag body to move whole walkway</div>`;
   } else if(el.type==='patio'){
     html+=`<div class="prop-grid">
       <div class="prop-row"><label>Width</label><input type="number" value="${Math.round(el.width)}" oninput="updateProp('width',+this.value)" min="12"step="1"/></div>
@@ -3314,6 +3537,8 @@ function getDimBadge(el) {
     return `${fmtFt(w)} × ${fmtFt(h)}`;
   }
   if(el.type==='patio') return `${fmtFt(el.width)} × ${fmtFt(el.height)}`;
+  if(el.type==='house') return `${fmtFt(el.width)} × ${fmtFt(el.height)}`;
+  if(el.type==='walkway') return `${fmtFt(el.width||36)} wide`;
   if(el.type==='stairs') return `${fmtFt(el.width)} × ${fmtFt(el.depth)}`;
   if(el.type==='merged-stairs'){ const pts=el.outline; const w=Math.max(...pts.map(p=>p.x))-Math.min(...pts.map(p=>p.x)); const h=Math.max(...pts.map(p=>p.y))-Math.min(...pts.map(p=>p.y)); return `${fmtFt(w)} × ${fmtFt(h)}`; }
   if(el.type==='furniture') return `${el.width}" × ${el.depth}"`;
@@ -3359,6 +3584,7 @@ function updateProp(key, val) {
     ];
   }
   if(el.type==='patio') el.label=`Patio ${fmtFt(el.width)}×${fmtFt(el.height)}`;
+  if(el.type==='house') el.label=`House ${fmtFt(el.width)}×${fmtFt(el.height)}`;
   setDirty(true); redraw(); renderProps();
 }
 function updatePropPos(axis, val) {
